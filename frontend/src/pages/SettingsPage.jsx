@@ -52,22 +52,22 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-fadeIn">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto animate-fadeIn pb-12">
       <div>
-        <h2 className="text-2xl font-bold text-crm-dark">CRM Settings</h2>
-        <p className="text-xs text-crm-muted mt-1">
+        <h2 className="text-xl sm:text-2xl font-bold text-crm-dark">CRM Settings</h2>
+        <p className="text-xs text-crm-muted mt-0.5 sm:mt-1">
           Manage reusable platform sources and global shared workspace preferences
         </p>
       </div>
 
       {msg && (
-        <div className="p-3.5 rounded-xl bg-purple-50 text-crm-primary text-xs font-semibold border border-purple-200">
+        <div className="p-3 sm:p-3.5 rounded-xl bg-purple-50 text-crm-primary text-xs font-semibold border border-purple-200">
           {msg}
         </div>
       )}
 
       {error && (
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-between">
+        <div className="p-4 rounded-xl sm:rounded-2xl bg-red-50 border border-red-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
             <span className="text-xs font-semibold text-red-900">{error}</span>
@@ -82,27 +82,27 @@ export default function SettingsPage() {
       )}
 
       {/* SECTION 16: REUSABLE PLATFORMS MANAGEMENT */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-soft space-y-5">
+      <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-soft space-y-4 sm:space-y-5">
         <div>
-          <h3 className="font-bold text-crm-dark">Reusable Discovery Platforms</h3>
+          <h3 className="font-bold text-crm-dark text-sm sm:text-base">Reusable Discovery Platforms</h3>
           <p className="text-xs text-crm-muted mt-0.5">
             These platforms appear in the "Source Platform" dropdown when creating leads and attaching links.
           </p>
         </div>
 
         {/* Add New Source Input */}
-        <form onSubmit={handleAddSource} className="flex gap-2">
+        <form onSubmit={handleAddSource} className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             required
             placeholder="e.g. Behance, Twitter/X, Dribbble..."
             value={newSourceName}
             onChange={(e) => setNewSourceName(e.target.value)}
-            className="flex-1 px-4 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-crm-primary/20 focus:border-crm-primary"
+            className="flex-1 px-3 sm:px-4 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-crm-primary/20 focus:border-crm-primary"
           />
           <button
             type="submit"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-crm-primary text-white text-xs font-semibold hover:bg-crm-primary-hover shadow-sm"
+            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-crm-primary text-white text-xs font-semibold hover:bg-crm-primary-hover shadow-sm"
           >
             <Plus className="w-4 h-4" />
             <span>Add Platform</span>
@@ -137,7 +137,7 @@ export default function SettingsPage() {
       </div>
 
       {/* SECTION 4: DATA BEHAVIOR NOTICE */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-soft space-y-3">
+      <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-soft space-y-3">
         <div className="flex items-center gap-2 text-crm-dark font-bold text-sm">
           <ShieldAlert className="w-4 h-4 text-purple-600" />
           <span>Shared Workspace & Data Behavior</span>

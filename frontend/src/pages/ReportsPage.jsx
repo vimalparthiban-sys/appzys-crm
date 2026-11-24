@@ -210,60 +210,60 @@ export default function ReportsPage() {
       {/* REPORT CONTENT */}
       {data && (
         <>
-          {/* SECTION 1: KPI CARDS */}
-          <div className="overflow-x-auto flex gap-3 pb-2 scrollbar-none snap-x sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:gap-4">
+          {/* SECTION 1: KPI CARDS (Responsive 2-col on mobile, 4-col on lg) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Total Leads */}
-            <div className="min-w-[200px] sm:min-w-0 shrink-0 sm:shrink snap-start bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
+            <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-soft flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs font-semibold text-crm-muted">
                 <span>Total Leads</span>
                 <Users className="w-4 h-4 text-crm-primary" />
               </div>
-              <h3 className="text-3xl font-bold text-crm-dark mt-2">
+              <h3 className="text-2xl sm:text-3xl font-bold text-crm-dark mt-2">
                 {data.totalUniqueLeads ?? 0}
               </h3>
-              <p className="text-[11px] text-gray-500 mt-1">
-                Unique prospect companies in database
+              <p className="text-[10px] sm:text-[11px] text-gray-500 mt-1">
+                Unique prospect companies
               </p>
             </div>
 
             {/* Reply Rate */}
-            <div className="min-w-[200px] sm:min-w-0 shrink-0 sm:shrink snap-start bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
+            <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-soft flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs font-semibold text-crm-muted">
                 <span>Reply Rate</span>
                 <TrendingUp className="w-4 h-4 text-sky-500" />
               </div>
-              <h3 className="text-3xl font-bold text-crm-dark mt-2">
+              <h3 className="text-2xl sm:text-3xl font-bold text-crm-dark mt-2">
                 {data.replyRate ?? 0}%
               </h3>
-              <p className="text-[11px] text-gray-500 mt-1">
-                Responses from {data.totalContacted ?? 0} contacted leads
+              <p className="text-[10px] sm:text-[11px] text-gray-500 mt-1">
+                Responses from contacted
               </p>
             </div>
 
             {/* Overall Conversion Rate */}
-            <div className="min-w-[200px] sm:min-w-0 shrink-0 sm:shrink snap-start bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
+            <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-soft flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs font-semibold text-crm-muted">
                 <span>Conversion Rate</span>
                 <Target className="w-4 h-4 text-emerald-500" />
               </div>
-              <h3 className="text-3xl font-bold text-crm-dark mt-2">
+              <h3 className="text-2xl sm:text-3xl font-bold text-crm-dark mt-2">
                 {data.overallConversionRate ?? 0}%
               </h3>
-              <p className="text-[11px] text-emerald-600 font-semibold mt-1">
-                {data.totalConvertedCompanies ?? 0} converted / {data.totalUniqueLeads ?? 0} total leads
+              <p className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold mt-1">
+                {data.totalConvertedCompanies ?? 0} converted / {data.totalUniqueLeads ?? 0} total
               </p>
             </div>
 
             {/* Best Performing Source */}
-            <div className="min-w-[200px] sm:min-w-0 shrink-0 sm:shrink snap-start bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
+            <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-soft flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs font-semibold text-crm-muted">
-                <span>Best Performing Source</span>
+                <span>Top Source</span>
                 <PieChart className="w-4 h-4 text-purple-500" />
               </div>
-              <h3 className="text-2xl font-bold text-crm-dark mt-2 truncate">
+              <h3 className="text-xl sm:text-2xl font-bold text-crm-dark mt-2 truncate">
                 {data.topPerformingChannel || 'None'}
               </h3>
-              <p className="text-[11px] text-gray-500 mt-1">
+              <p className="text-[10px] sm:text-[11px] text-gray-500 mt-1">
                 Highest lead acquisition volume
               </p>
             </div>
@@ -441,8 +441,8 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* SECTION 6: OUTREACH ACTIVITY SUMMARY */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-soft space-y-4">
+          {/* SECTION 6: OUTREACH ACTIVITY SUMMARY (Responsive 2-col on mobile, 3-col on sm, 6-col on lg) */}
+          <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-soft space-y-4">
             <div>
               <h3 className="font-bold text-crm-dark text-base">Outreach Activity Summary</h3>
               <p className="text-xs text-crm-muted mt-0.5">
@@ -450,11 +450,11 @@ export default function ReportsPage() {
               </p>
             </div>
 
-            <div className="overflow-x-auto flex gap-3 pb-2 scrollbar-none snap-x sm:grid sm:grid-cols-3 lg:grid-cols-6 sm:overflow-visible">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
               {(data.activitySummary || []).map((act) => (
                 <div
                   key={act.activityType}
-                  className="min-w-[125px] sm:min-w-0 shrink-0 sm:shrink snap-start p-4 rounded-xl border border-gray-100 bg-white shadow-2xs hover:border-purple-200 transition-colors text-center space-y-1.5"
+                  className="p-3 sm:p-4 rounded-xl border border-gray-100 bg-white shadow-2xs hover:border-purple-200 transition-colors text-center space-y-1.5"
                 >
                   <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center mx-auto">
                     {getActivityIcon(act.iconName)}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import BottomNav from './components/BottomNav';
 import AddLeadModal from './components/AddLeadModal';
 
 // Pages
@@ -59,11 +60,11 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-crm-bg text-crm-dark">
-      {/* Permanent Fixed Left Deep Purple Sidebar */}
+      {/* Desktop Left Sidebar (hidden on mobile) */}
       <Sidebar />
 
       {/* Main Content Pane */}
-      <div className="flex-1 h-screen flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 h-screen flex flex-col min-w-0 overflow-hidden relative">
         <Header 
           onRefresh={loadDashboardData} 
           isRefreshing={isRefreshing}
@@ -71,7 +72,7 @@ export default function App() {
           onOpenAddLead={() => setIsAddLeadOpen(true)}
         />
 
-        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-y-auto min-w-0">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8 overflow-y-auto min-w-0">
           <Routes>
             <Route
               path="/"
@@ -94,6 +95,9 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
+
+        {/* Mobile Fixed Bottom Navigation (hidden on desktop) */}
+        <BottomNav />
       </div>
 
       {/* Global Add Lead Modal */}

@@ -480,33 +480,33 @@ export default function CompanyDetailPage() {
       </button>
 
       {/* SECTION 10: COMPANY HEADER */}
-      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-soft flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-purple-50 text-crm-primary flex items-center justify-center shrink-0 shadow-inner">
-            <Building2 className="w-8 h-8" />
+      <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-soft flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-purple-50 text-crm-primary flex items-center justify-center shrink-0 shadow-inner">
+            <Building2 className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-crm-dark">{company.name}</h2>
+          <div className="space-y-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold text-crm-dark truncate">{company.name}</h2>
               <StatusBadge status={company.status} />
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-xs text-crm-muted pt-1">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-crm-muted pt-1">
               <a
                 href={company.officialWebsite}
                 target="_blank"
                 rel="noreferrer"
-                className="text-crm-primary hover:underline flex items-center gap-1"
+                className="text-crm-primary hover:underline flex items-center gap-1 truncate max-w-xs"
               >
-                <Globe className="w-3.5 h-3.5" />
-                <span>{company.officialWebsite}</span>
-                <ExternalLink className="w-3 h-3" />
+                <Globe className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{company.officialWebsite}</span>
+                <ExternalLink className="w-3 h-3 shrink-0" />
               </a>
 
               {company.contactPerson && (
-                <span className="flex items-center gap-1 text-gray-600">
-                  <User className="w-3.5 h-3.5" />
-                  <span>{company.contactPerson}</span>
+                <span className="flex items-center gap-1 text-gray-600 truncate">
+                  <User className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{company.contactPerson}</span>
                 </span>
               )}
             </div>
@@ -514,10 +514,10 @@ export default function CompanyDetailPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={() => setShowEditCompany(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <Edit2 className="w-3.5 h-3.5" />
             <span>Edit Company</span>
@@ -525,7 +525,7 @@ export default function CompanyDetailPage() {
 
           <button
             onClick={() => setShowAddSource(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 text-crm-primary text-xs font-semibold hover:bg-purple-100 transition-colors"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 text-crm-primary text-xs font-semibold hover:bg-purple-100 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Source</span>
@@ -538,14 +538,14 @@ export default function CompanyDetailPage() {
         {/* Left Column (2 Cols): Pipeline & Timeline */}
         <div className="lg:col-span-2 space-y-6">
           {/* Main Pipeline Stages + Secondary Statuses */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-soft space-y-4">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-soft space-y-4">
             <div>
               <h3 className="text-sm font-bold text-crm-dark">Pipeline Stage</h3>
               <p className="text-xs text-crm-muted mt-0.5">Click to transition company across acquisition stages</p>
             </div>
 
-            {/* Primary Acquisition Pipeline */}
-            <div className="overflow-x-auto flex gap-2 pb-2 scrollbar-none snap-x md:grid md:grid-cols-6 md:overflow-visible">
+            {/* Primary Acquisition Pipeline: Responsive grid 2 cols on mobile, 3 on sm, 6 on md */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
               {PIPELINE_STAGES.filter(s => s.key !== 'NO_REPLY' && s.key !== 'REJECTED').map((stage) => {
                 const isActive = company.status === stage.key;
                 return (
@@ -562,7 +562,7 @@ export default function CompanyDetailPage() {
                         handleStatusChange(stage.key);
                       }
                     }}
-                    className={`min-w-[110px] sm:min-w-[125px] md:min-w-0 shrink-0 md:shrink snap-start py-2 px-3 rounded-xl text-xs font-semibold text-center transition-all ${
+                    className={`py-2 px-2 sm:px-3 rounded-xl text-xs font-semibold text-center transition-all ${
                       isActive
                         ? 'bg-crm-primary text-white shadow-md shadow-purple-950/20 scale-[1.02]'
                         : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'
@@ -1113,7 +1113,7 @@ export default function CompanyDetailPage() {
       {/* QUICK POPUP 1: LOG CONTACT ACTIVITY (When Contacted status is clicked) */}
       {showQuickContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-gray-100">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 border border-gray-100">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div>
                 <h4 className="font-bold text-base text-crm-dark">Log Contact Activity</h4>
@@ -1253,7 +1253,7 @@ export default function CompanyDetailPage() {
       {/* QUICK POPUP 2: LOG RECEIVED RESPONSE (When Reply Received status is clicked) */}
       {showQuickResponseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-gray-100">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 border border-gray-100">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div>
                 <h4 className="font-bold text-base text-crm-dark">Log Received Response</h4>
@@ -1362,7 +1362,7 @@ export default function CompanyDetailPage() {
       {/* MODAL 1: ADD DISCOVERY SOURCE */}
       {showAddSource && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <h4 className="font-bold text-sm text-crm-dark">Add Discovery Source</h4>
               <button onClick={() => setShowAddSource(false)}><X className="w-4 h-4 text-gray-400" /></button>
@@ -1412,7 +1412,7 @@ export default function CompanyDetailPage() {
       {/* MODAL 2: SCHEDULE FOLLOW-UP */}
       {showScheduleFollowUp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <h4 className="font-bold text-sm text-crm-dark">Schedule Follow-up</h4>
               <button onClick={() => setShowScheduleFollowUp(false)}><X className="w-4 h-4 text-gray-400" /></button>
@@ -1450,7 +1450,7 @@ export default function CompanyDetailPage() {
       {/* MODAL 3: LOG GENERAL MANUAL ACTIVITY (Unchanged) */}
       {showAddActivity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <h4 className="font-bold text-sm text-crm-dark">Log Contact Outreach Activity</h4>
               <button onClick={() => setShowAddActivity(false)}><X className="w-4 h-4 text-gray-400" /></button>
@@ -1539,7 +1539,7 @@ export default function CompanyDetailPage() {
       {/* MODAL 4: EDIT ACTIVITY DESCRIPTION ONLY */}
       {editingActivity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div>
                 <h4 className="font-bold text-sm text-crm-dark">Edit Activity Description</h4>
@@ -1588,7 +1588,7 @@ export default function CompanyDetailPage() {
       {/* MODAL 5: EDIT COMPANY */}
       {showEditCompany && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <h4 className="font-bold text-sm text-crm-dark">Edit Company Details</h4>
               <button onClick={() => setShowEditCompany(false)}><X className="w-4 h-4 text-gray-400" /></button>
@@ -1653,7 +1653,7 @@ export default function CompanyDetailPage() {
       {/* MODAL: ADD CONTACT PERSON */}
       {showAddContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-crm-primary" />
@@ -1757,7 +1757,7 @@ export default function CompanyDetailPage() {
       {/* MODAL: EDIT CONTACT PERSON */}
       {showEditContactModal && editingContact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-crm-primary" />
@@ -1843,7 +1843,7 @@ export default function CompanyDetailPage() {
       {/* MODAL: LOG PERSON OUTREACH ACTIVITY */}
       {showPersonActivityModal && activeContactForActivity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div>
                 <h4 className="font-bold text-sm text-crm-dark">Log Outreach with {activeContactForActivity.personName}</h4>
