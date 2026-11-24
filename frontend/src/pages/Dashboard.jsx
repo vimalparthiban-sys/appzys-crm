@@ -31,15 +31,17 @@ export default function Dashboard({ data, onOpenAddLead, error, onRetry }) {
     { label: 'Converted', value: (data?.converted ?? data?.convertedClients) ?? 0, icon: Trophy, color: 'text-green-600 bg-green-50', filter: 'CONVERTED' },
   ];
 
-  // Pipeline stage cards mapping dynamically from database DTO breakdown
+  // Pipeline stage cards mapping dynamically from database DTO breakdown (All 8 Pipeline Statuses)
   const pb = data?.pipelineBreakdown || {};
   const pipelineStages = [
-    { label: 'Found', count: pb['FOUND'] ?? data?.identifiedCount ?? 0, color: 'bg-purple-50/60 text-crm-primary border-purple-100', key: 'FOUND' },
-    { label: 'Contacted', count: pb['CONTACTED'] ?? data?.contactedCount ?? 0, color: 'bg-sky-50/60 text-sky-700 border-sky-100', key: 'CONTACTED' },
-    { label: 'Replied', count: pb['REPLY_RECEIVED'] ?? data?.repliedCount ?? 0, color: 'bg-blue-50/60 text-blue-700 border-blue-100', key: 'REPLY_RECEIVED' },
-    { label: 'Interested', count: pb['INTERESTED'] ?? data?.interestedCount ?? 0, color: 'bg-emerald-50/60 text-emerald-700 border-emerald-100', key: 'INTERESTED' },
-    { label: 'Meeting', count: pb['MEETING'] ?? data?.meetingCount ?? 0, color: 'bg-cyan-50/60 text-cyan-700 border-cyan-100', key: 'MEETING' },
-    { label: 'Converted', count: pb['CONVERTED'] ?? data?.convertedCount ?? 0, color: 'bg-green-50/60 text-green-700 border-green-100', key: 'CONVERTED' },
+    { label: 'Found', count: pb['FOUND'] ?? 0, color: 'bg-indigo-50/70 text-indigo-700 border-indigo-100 hover:border-indigo-300', key: 'FOUND' },
+    { label: 'Contacted', count: pb['CONTACTED'] ?? 0, color: 'bg-sky-50/70 text-sky-700 border-sky-100 hover:border-sky-300', key: 'CONTACTED' },
+    { label: 'Replied', count: pb['REPLY_RECEIVED'] ?? 0, color: 'bg-purple-50/70 text-purple-700 border-purple-100 hover:border-purple-300', key: 'REPLY_RECEIVED' },
+    { label: 'Interested', count: pb['INTERESTED'] ?? 0, color: 'bg-teal-50/70 text-teal-700 border-teal-100 hover:border-teal-300', key: 'INTERESTED' },
+    { label: 'Meeting', count: pb['MEETING'] ?? 0, color: 'bg-cyan-50/70 text-cyan-700 border-cyan-100 hover:border-cyan-300', key: 'MEETING' },
+    { label: 'Converted', count: pb['CONVERTED'] ?? 0, color: 'bg-emerald-50/70 text-emerald-700 border-emerald-100 hover:border-emerald-300', key: 'CONVERTED' },
+    { label: 'No Reply', count: pb['NO_REPLY'] ?? 0, color: 'bg-slate-50/90 text-slate-700 border-slate-200 hover:border-slate-300', key: 'NO_REPLY' },
+    { label: 'Rejected', count: pb['REJECTED'] ?? 0, color: 'bg-rose-50/90 text-rose-700 border-rose-200 hover:border-rose-300', key: 'REJECTED' },
   ];
 
   // Follow-up tab selections
@@ -130,16 +132,16 @@ export default function Dashboard({ data, onOpenAddLead, error, onRetry }) {
             </span>
           </div>
 
-          {/* Responsive grid for pipeline cards: 2 cols on mobile, 3 on sm, 6 on md+ */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+          {/* Responsive 4-col x 2-row grid on desktop, 2-col on mobile */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
             {pipelineStages.map((stage) => (
               <div
                 key={stage.key}
                 onClick={() => navigate(`/companies?status=${stage.key}`)}
-                className={`p-2.5 sm:p-3 rounded-xl border border-gray-100 text-center cursor-pointer hover:shadow-md transition-all ${stage.color}`}
+                className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border text-center cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all select-none ${stage.color}`}
               >
-                <div className="text-[11px] sm:text-xs font-semibold mb-1 truncate">{stage.label}</div>
-                <div className="text-lg sm:text-xl font-bold">{stage.count}</div>
+                <div className="text-xs font-semibold mb-1 truncate">{stage.label}</div>
+                <div className="text-xl sm:text-2xl font-black">{stage.count}</div>
               </div>
             ))}
           </div>

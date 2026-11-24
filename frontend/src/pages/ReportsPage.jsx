@@ -31,6 +31,26 @@ const DATE_FILTERS = [
   { key: 'CUSTOM', label: 'Custom Range' },
 ];
 
+const FUNNEL_COLORS = {
+  FOUND: '#4f46e5',         // Indigo
+  CONTACTED: '#0ea5e9',     // Sky Blue
+  REPLY_RECEIVED: '#8b5cf6',// Purple
+  INTERESTED: '#0d9488',    // Teal
+  MEETING: '#0891b2',       // Cyan
+  CONVERTED: '#059669',     // Emerald
+};
+
+const STATUS_COLORS = {
+  FOUND: { fill: '#4f46e5', light: '#f5f3ff', text: '#4338ca' },
+  CONTACTED: { fill: '#0ea5e9', light: '#f0f9ff', text: '#0369a1' },
+  REPLY_RECEIVED: { fill: '#8b5cf6', light: '#faf5ff', text: '#6d28d9' },
+  INTERESTED: { fill: '#0d9488', light: '#f0fdfa', text: '#0f766e' },
+  MEETING: { fill: '#0891b2', light: '#ecfeff', text: '#0e7490' },
+  CONVERTED: { fill: '#059669', light: '#ecfdf5', text: '#047857' },
+  NO_REPLY: { fill: '#64748b', light: '#f8fafc', text: '#475569' },
+  REJECTED: { fill: '#e11d48', light: '#fff1f2', text: '#be123c' },
+};
+
 export default function ReportsPage() {
   const reportsCacheKey = `reports_${JSON.stringify({ filter: 'ALL' })}`;
   const initialCached = CRM_CACHE.get(reportsCacheKey)?.data;
@@ -314,10 +334,13 @@ export default function ReportsPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="w-full h-3.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="w-full h-3.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
                     <div
-                      className={`h-full rounded-full transition-all duration-700 ${stage.color || 'bg-crm-primary'}`}
-                      style={{ width: `${Math.min(100, Math.max(stage.percentageOfTotal, stage.count > 0 ? 4 : 0))}%` }}
+                      className="h-full rounded-full transition-all duration-700 shadow-xs"
+                      style={{ 
+                        width: `${Math.min(100, Math.max(stage.percentageOfTotal, stage.count > 0 ? 4 : 0))}%`,
+                        backgroundColor: FUNNEL_COLORS[stage.stageKey] || '#6D42D8'
+                      }}
                     />
                   </div>
                 </div>
@@ -430,21 +453,31 @@ export default function ReportsPage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-              {(data.pipelineDistribution || []).map((item) => (
-                <div key={item.statusKey} className="p-4 rounded-xl bg-gray-50/80 border border-gray-100 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-gray-700">{item.statusLabel}</span>
-                    <span className="text-[11px] text-gray-400 font-medium">{item.percentage}%</span>
+              {(data.pipelineDistribution || []).map((item) => {
+                const colors = STATUS_COLORS[item.statusKey] || { fill: '#6D42D8', light: '#f5f3ff', text: '#6d28d9' };
+                return (
+                  <div 
+                    key={item.statusKey} 
+                    className="p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2 transition-all hover:shadow-card hover:-translate-y-0.5" 
+                    style={{ backgroundColor: colors.light }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold" style={{ color: colors.text }}>{item.statusLabel}</span>
+                      <span className="text-[11px] font-semibold text-gray-500">{item.percentage}%</span>
+                    </div>
+                    <div className="text-2xl font-black text-crm-dark">{item.count}</div>
+                    <div className="w-full h-2 bg-white/90 rounded-full overflow-hidden mt-1 shadow-inner">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${Math.min(100, Math.max(item.percentage, item.count > 0 ? 6 : 0))}%`,
+                          backgroundColor: colors.fill
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="text-2xl font-bold text-crm-dark">{item.count}</div>
-                  <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1.5">
-                    <div
-                      className={`h-full ${item.badgeColor || 'bg-crm-primary'}`}
-                      style={{ width: `${Math.min(100, Math.max(item.percentage, item.count > 0 ? 5 : 0))}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
