@@ -13,12 +13,12 @@ import FollowUpsPage from './pages/FollowUpsPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 
-import { CRM_API } from './services/api';
+import { CRM_API, CRM_CACHE } from './services/api';
 
 export default function App() {
   const navigate = useNavigate();
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState(() => CRM_CACHE.get('/dashboard/overview')?.data || null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(null);
   const [lastRefreshed, setLastRefreshed] = useState('');

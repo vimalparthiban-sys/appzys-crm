@@ -20,7 +20,7 @@ import {
   Building2,
   ChevronRight
 } from 'lucide-react';
-import { CRM_API } from '../services/api';
+import { CRM_API, CRM_CACHE } from '../services/api';
 
 const DATE_FILTERS = [
   { key: 'ALL', label: 'All Time' },
@@ -32,8 +32,11 @@ const DATE_FILTERS = [
 ];
 
 export default function ReportsPage() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const reportsCacheKey = `reports_${JSON.stringify({ filter: 'ALL' })}`;
+  const initialCached = CRM_CACHE.get(reportsCacheKey)?.data;
+
+  const [data, setData] = useState(() => initialCached || null);
+  const [loading, setLoading] = useState(() => !initialCached);
   const [error, setError] = useState(null);
 
   // Filter state
@@ -43,14 +46,18 @@ export default function ReportsPage() {
   const [appliedCustom, setAppliedCustom] = useState(false);
 
   const fetchReports = async (filterToUse = activeFilter, startToUse = customStart, endToUse = customEnd) => {
-    setLoading(true);
+    const params = { filter: filterToUse };
+    if (filterToUse === 'CUSTOM') {
+      if (startToUse) params.startDate = startToUse;
+      if (endToUse) params.endDate = endToUse;
+    }
+    const cKey = `reports_${JSON.stringify(params)}`;
+    const cached = CRM_CACHE.get(cKey)?.data;
+    if (!cached && !data) {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const params = { filter: filterToUse };
-      if (filterToUse === 'CUSTOM') {
-        if (startToUse) params.startDate = startToUse;
-        if (endToUse) params.endDate = endToUse;
-      }
       const summary = await CRM_API.getReportsSummary(params);
       setData(summary);
     } catch (err) {

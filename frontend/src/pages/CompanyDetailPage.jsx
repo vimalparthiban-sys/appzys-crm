@@ -30,7 +30,7 @@ import {
   Smartphone,
   Users
 } from 'lucide-react';
-import { CRM_API } from '../services/api';
+import { CRM_API, CRM_CACHE } from '../services/api';
 import StatusBadge, { PIPELINE_STAGES } from '../components/StatusBadge';
 import FollowUpBadge from '../components/FollowUpBadge';
 
@@ -38,8 +38,9 @@ export default function CompanyDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [company, setCompany] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cachedCompany = CRM_CACHE.get(`company_${id}`)?.data;
+  const [company, setCompany] = useState(() => cachedCompany || null);
+  const [loading, setLoading] = useState(() => !cachedCompany);
   const [error, setError] = useState(null);
 
   const [showAllActivities, setShowAllActivities] = useState(false);
@@ -118,7 +119,10 @@ export default function CompanyDetailPage() {
   const [editForm, setEditForm] = useState({ name: '', officialWebsite: '', contactPerson: '', email: '', phone: '' });
 
   const fetchCompanyDetails = async () => {
-    setLoading(true);
+    const cached = CRM_CACHE.get(`company_${id}`)?.data;
+    if (!cached && !company) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const data = await CRM_API.getCompanyById(id);

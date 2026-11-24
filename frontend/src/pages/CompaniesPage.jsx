@@ -17,7 +17,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CRM_API } from '../services/api';
+import { CRM_API, CRM_CACHE } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import FollowUpBadge from '../components/FollowUpBadge';
 
@@ -49,8 +49,21 @@ export default function CompaniesPage({ onOpenAddLead }) {
   const [viewMode, setViewMode] = useState('table'); // Default to table for immediate clarity
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Instant SWR Cache Lookup: Render immediately without showing a blank 1-second loader
+  const filterParams = {
+    search: search.trim() || undefined,
+    status: statusFilter !== 'ALL' ? statusFilter : undefined,
+    source: sourceFilter !== 'ALL' ? sourceFilter : undefined,
+    followUp: followUpFilter !== 'ALL' ? followUpFilter : undefined,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    sort: sortOrder,
+  };
+  const cacheKey = `companies_${JSON.stringify(filterParams)}`;
+  const initialCached = CRM_CACHE.get(cacheKey)?.data;
+
+  const [companies, setCompanies] = useState(() => initialCached || []);
+  const [loading, setLoading] = useState(() => !initialCached);
   const [error, setError] = useState(null);
 
   // Drag-and-drop state
@@ -58,7 +71,11 @@ export default function CompaniesPage({ onOpenAddLead }) {
   const [dragOverCol, setDragOverCol] = useState(null);
 
   const fetchCompanies = async () => {
-    setLoading(true);
+    // Only display full-screen loading spinner if we don't have cached data to display
+    const cached = CRM_CACHE.get(cacheKey)?.data;
+    if (!cached && companies.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const data = await CRM_API.getCompanies({

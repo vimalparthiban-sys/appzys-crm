@@ -23,22 +23,23 @@ export default function Dashboard({ data, onOpenAddLead, error, onRetry }) {
 
   // Stats config mapped from database DTO
   const stats = [
-    { label: 'Total Leads', value: data?.totalLeads ?? 0, icon: Users, color: 'text-purple-600 bg-purple-50', change: '+12%', filter: null },
-    { label: 'Contacted', value: data?.contactedLeads ?? 0, icon: Send, color: 'text-sky-600 bg-sky-50', change: '+18%', filter: 'CONTACTED' },
-    { label: 'Follow-up Today', value: data?.followUpsToday ?? 0, icon: Calendar, color: 'text-amber-600 bg-amber-50', urgency: 'TODAY' },
-    { label: 'Overdue', value: data?.overdueTasks ?? 0, icon: AlertTriangle, color: 'text-rose-600 bg-rose-50', urgency: 'OVERDUE' },
-    { label: 'Interested', value: data?.interestedLeads ?? 0, icon: HeartHandshake, color: 'text-emerald-600 bg-emerald-50', filter: 'INTERESTED' },
-    { label: 'Converted', value: data?.convertedClients ?? 0, icon: Trophy, color: 'text-green-600 bg-green-50', filter: 'CONVERTED' },
+    { label: 'Total Leads', value: data?.totalLeads ?? 0, icon: Users, color: 'text-purple-600 bg-purple-50', change: data?.totalLeadsChange || '+12%', filter: null },
+    { label: 'Contacted', value: (data?.contacted ?? data?.contactedLeads) ?? 0, icon: Send, color: 'text-sky-600 bg-sky-50', change: data?.contactedChange || '+18%', filter: 'CONTACTED' },
+    { label: 'Follow-up Today', value: (data?.followUpToday ?? data?.followUpsToday) ?? 0, icon: Calendar, color: 'text-amber-600 bg-amber-50', urgency: 'TODAY' },
+    { label: 'Overdue', value: (data?.overdue ?? data?.overdueTasks) ?? 0, icon: AlertTriangle, color: 'text-rose-600 bg-rose-50', urgency: 'OVERDUE' },
+    { label: 'Interested', value: (data?.interested ?? data?.interestedLeads) ?? 0, icon: HeartHandshake, color: 'text-emerald-600 bg-emerald-50', filter: 'INTERESTED' },
+    { label: 'Converted', value: (data?.converted ?? data?.convertedClients) ?? 0, icon: Trophy, color: 'text-green-600 bg-green-50', filter: 'CONVERTED' },
   ];
 
-  // Pipeline stage cards mapping
+  // Pipeline stage cards mapping dynamically from database DTO breakdown
+  const pb = data?.pipelineBreakdown || {};
   const pipelineStages = [
-    { label: 'Identified', count: data?.identifiedCount ?? 0, color: 'bg-purple-50/60 text-crm-primary border-purple-100', key: 'IDENTIFIED' },
-    { label: 'Contacted', count: data?.contactedCount ?? 0, color: 'bg-sky-50/60 text-sky-700 border-sky-100', key: 'CONTACTED' },
-    { label: 'Replied', count: data?.repliedCount ?? 0, color: 'bg-blue-50/60 text-blue-700 border-blue-100', key: 'REPLY_RECEIVED' },
-    { label: 'Follow-up', count: data?.inFollowUpCount ?? 0, color: 'bg-amber-50/60 text-amber-700 border-amber-100', key: 'IN_FOLLOW_UP' },
-    { label: 'Interested', count: data?.interestedCount ?? 0, color: 'bg-emerald-50/60 text-emerald-700 border-emerald-100', key: 'INTERESTED' },
-    { label: 'Converted', count: data?.convertedCount ?? 0, color: 'bg-green-50/60 text-green-700 border-green-100', key: 'CONVERTED' },
+    { label: 'Found', count: pb['FOUND'] ?? data?.identifiedCount ?? 0, color: 'bg-purple-50/60 text-crm-primary border-purple-100', key: 'FOUND' },
+    { label: 'Contacted', count: pb['CONTACTED'] ?? data?.contactedCount ?? 0, color: 'bg-sky-50/60 text-sky-700 border-sky-100', key: 'CONTACTED' },
+    { label: 'Replied', count: pb['REPLY_RECEIVED'] ?? data?.repliedCount ?? 0, color: 'bg-blue-50/60 text-blue-700 border-blue-100', key: 'REPLY_RECEIVED' },
+    { label: 'Interested', count: pb['INTERESTED'] ?? data?.interestedCount ?? 0, color: 'bg-emerald-50/60 text-emerald-700 border-emerald-100', key: 'INTERESTED' },
+    { label: 'Meeting', count: pb['MEETING'] ?? data?.meetingCount ?? 0, color: 'bg-cyan-50/60 text-cyan-700 border-cyan-100', key: 'MEETING' },
+    { label: 'Converted', count: pb['CONVERTED'] ?? data?.convertedCount ?? 0, color: 'bg-green-50/60 text-green-700 border-green-100', key: 'CONVERTED' },
   ];
 
   // Follow-up tab selections

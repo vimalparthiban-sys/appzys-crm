@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarClock, CheckCircle2, AlertCircle, Clock, ChevronRight, CalendarOff, CheckCheck } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CRM_API } from '../services/api';
+import { CRM_API, CRM_CACHE } from '../services/api';
 import FollowUpBadge from '../components/FollowUpBadge';
 
 export default function FollowUpsPage() {
@@ -9,12 +9,18 @@ export default function FollowUpsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'TODAY'; // TODAY, OVERDUE, UPCOMING, NO_DATE, COMPLETED
 
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = `companies_${JSON.stringify({ followUp: activeTab })}`;
+  const initialCached = CRM_CACHE.get(cacheKey)?.data;
+
+  const [companies, setCompanies] = useState(() => initialCached || []);
+  const [loading, setLoading] = useState(() => !initialCached);
   const [error, setError] = useState(null);
 
   const fetchFollowUps = async () => {
-    setLoading(true);
+    const cached = CRM_CACHE.get(cacheKey)?.data;
+    if (!cached && companies.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const data = await CRM_API.getCompanies({ followUp: activeTab });

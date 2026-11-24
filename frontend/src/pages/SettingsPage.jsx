@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Plus, Trash2, CheckCircle2, ShieldAlert, AlertCircle } from 'lucide-react';
-import { CRM_API } from '../services/api';
+import { CRM_API, CRM_CACHE } from '../services/api';
 
 export default function SettingsPage() {
-  const [sources, setSources] = useState([]);
+  const cachedSources = CRM_CACHE.get('settings_sources')?.data;
+  const [sources, setSources] = useState(() => cachedSources || []);
   const [newSourceName, setNewSourceName] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !cachedSources);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState(null);
 
   const fetchSources = async () => {
-    setLoading(true);
+    const cached = CRM_CACHE.get('settings_sources')?.data;
+    if (!cached && sources.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const data = await CRM_API.getSettingsSources();
+      CRM_CACHE.set('settings_sources', data);
       setSources(data);
     } catch (err) {
       setError(err.message || 'Failed to load source settings.');

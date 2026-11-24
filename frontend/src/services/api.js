@@ -15,7 +15,6 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Return structured, human-readable error message from server
     let serverMessage = 'An unexpected server error occurred.';
     if (error.response?.data) {
       const data = error.response.data;
@@ -32,27 +31,49 @@ api.interceptors.response.use(
   }
 );
 
+// High-speed in-memory client cache with Stale-While-Revalidate support
+const memoryCache = new Map();
+
+export const CRM_CACHE = {
+  get: (key) => memoryCache.get(key),
+  set: (key, data) => memoryCache.set(key, { data, timestamp: Date.now() }),
+  delete: (key) => memoryCache.delete(key),
+  clear: () => memoryCache.clear(),
+  deletePattern: (prefix) => {
+    for (const key of memoryCache.keys()) {
+      if (key.startsWith(prefix)) memoryCache.delete(key);
+    }
+  }
+};
+
 export const CRM_API = {
   // Dashboard Overview
   getDashboard: async () => {
     const res = await api.get('/dashboard/overview');
+    CRM_CACHE.set('/dashboard/overview', res.data);
     return res.data;
   },
 
   // Reports Analytics Summary with optional date filters
   getReportsSummary: async (params = {}) => {
+    const cacheKey = `reports_${JSON.stringify(params)}`;
     const res = await api.get('/reports/summary', { params });
+    CRM_CACHE.set(cacheKey, res.data);
     return res.data;
   },
 
   // Companies / Leads list with search, status, source, follow-up, and date range filters
   getCompanies: async (params = {}) => {
+    const cacheKey = `companies_${JSON.stringify(params)}`;
     const res = await api.get('/companies', { params });
+    CRM_CACHE.set(cacheKey, res.data);
     return res.data;
   },
 
   getCompanyById: async (id) => {
+    const cacheKey = `company_${id}`;
     const res = await api.get(`/companies/${id}`);
+    CRM_CACHE.set(cacheKey, res.data);
     return res.data;
   },
 
@@ -65,41 +86,49 @@ export const CRM_API = {
 
   createLead: async (payload) => {
     const res = await api.post('/companies', payload);
+    CRM_CACHE.clear(); // invalidate all cached lists and stats
     return res.data;
   },
 
   updateLead: async (id, payload) => {
     const res = await api.put(`/companies/${id}`, payload);
+    CRM_CACHE.clear();
     return res.data;
   },
 
   updateStatus: async (id, status) => {
     const res = await api.patch(`/companies/${id}/status`, { status });
+    CRM_CACHE.clear();
     return res.data;
   },
 
   attachSource: async (companyId, payload) => {
     const res = await api.post(`/companies/${companyId}/sources`, payload);
+    CRM_CACHE.clear();
     return res.data;
   },
 
   scheduleFollowUp: async (companyId, payload) => {
     const res = await api.post(`/companies/${companyId}/follow-ups`, payload);
+    CRM_CACHE.clear();
     return res.data;
   },
 
   completeFollowUp: async (companyId, followUpId) => {
     const res = await api.patch(`/companies/${companyId}/follow-ups/${followUpId}/complete`);
+    CRM_CACHE.clear();
     return res.data;
   },
 
   addActivity: async (companyId, payload) => {
     const res = await api.post(`/companies/${companyId}/activities`, payload);
+    CRM_CACHE.clear();
     return res.data;
   },
 
   updateActivityDescription: async (companyId, activityId, description) => {
     const res = await api.patch(`/companies/${companyId}/activities/${activityId}/description`, { description });
+    CRM_CACHE.clear();
     return res.data;
   },
 
@@ -111,6 +140,7 @@ export const CRM_API = {
 
   addCompanyContact: async (companyId, payload) => {
     const res = await api.post(`/companies/${companyId}/contacts`, payload);
+    CRM_CACHE.clear();
     return res.data;
   },
 
@@ -121,16 +151,19 @@ export const CRM_API = {
 
   updateCompanyContact: async (companyId, contactId, payload) => {
     const res = await api.put(`/companies/${companyId}/contacts/${contactId}`, payload);
+    CRM_CACHE.clear();
     return res.data;
   },
 
   updateContactStatus: async (companyId, contactId, status) => {
     const res = await api.patch(`/companies/${companyId}/contacts/${contactId}/status`, { status });
+    CRM_CACHE.clear();
     return res.data;
   },
 
   addPersonActivity: async (companyId, contactId, payload) => {
     const res = await api.post(`/companies/${companyId}/contacts/${contactId}/activities`, payload);
+    CRM_CACHE.clear();
     return res.data;
   },
 
