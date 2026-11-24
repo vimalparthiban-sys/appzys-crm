@@ -4,10 +4,11 @@ WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 RUN mvn clean package -DskipTests -Dmaven.test.skip=true
+RUN cp target/*.jar app.jar
 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /app/app.jar app.jar
 EXPOSE 8080
 ENV PORT=8080
 ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT} -jar app.jar"]
