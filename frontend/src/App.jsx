@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import AddLeadModal from './components/AddLeadModal';
+import LoginModal from './components/LoginModal';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -13,10 +14,11 @@ import FollowUpsPage from './pages/FollowUpsPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 
-import { CRM_API, CRM_CACHE } from './services/api';
+import { CRM_API, CRM_CACHE, getAuthToken } from './services/api';
 
 export default function App() {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!getAuthToken());
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [dashboardData, setDashboardData] = useState(() => CRM_CACHE.get('/dashboard/overview')?.data || null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -25,6 +27,10 @@ export default function App() {
 
   // Fetch / Sync CRM data from Backend
   const loadDashboardData = useCallback(async () => {
+    if (!getAuthToken()) {
+      setIsAuthenticated(false);
+      return;
+    }
     setIsRefreshing(true);
     setRefreshError(null);
     try {
@@ -40,28 +46,69 @@ export default function App() {
     }
   }, []);
 
-  // Initial load
+  // Listen for unauthorized or logout custom events
   useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+    const handleUnauthorized = () => {
+      setIsAuthenticated(false);
+      setDashboardData(null);
+      CRM_CACHE.clear();
+    };
+
+    const handleLogout = () => {
+      setIsAuthenticated(false);
+      setDashboardData(null);
+      CRM_CACHE.clear();
+    };
+
+    window.addEventListener('crm:unauthorized', handleUnauthorized);
+    window.addEventListener('crm:logout', handleLogout);
+
+    return () => {
+      window.removeEventListener('crm:unauthorized', handleUnauthorized);
+      window.removeEventListener('crm:logout', handleLogout);
+    };
+  }, []);
+
+  // Initial load when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadDashboardData();
+    }
+  }, [isAuthenticated, loadDashboardData]);
 
   // Periodic auto-refresh every 5 minutes (300 seconds)
   useEffect(() => {
+    if (!isAuthenticated) return;
     const interval = setInterval(() => {
       loadDashboardData();
     }, 300000);
     return () => clearInterval(interval);
-  }, [loadDashboardData]);
+  }, [isAuthenticated, loadDashboardData]);
 
   const handleLeadCreated = (newLead) => {
     loadDashboardData();
     navigate(`/companies/${newLead.id}`);
   };
 
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    loadDashboardData();
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setDashboardData(null);
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-crm-bg text-crm-dark">
+      {/* Login Screen Gate if not authenticated */}
+      {!isAuthenticated && (
+        <LoginModal onLoginSuccess={handleLoginSuccess} />
+      )}
+
       {/* Desktop Left Sidebar (hidden on mobile) */}
-      <Sidebar />
+      <Sidebar onLogout={handleLogout} />
 
       {/* Main Content Pane */}
       <div className="flex-1 h-screen flex flex-col min-w-0 overflow-hidden relative">
@@ -70,6 +117,7 @@ export default function App() {
           isRefreshing={isRefreshing}
           lastRefreshed={lastRefreshed}
           onOpenAddLead={() => setIsAddLeadOpen(true)}
+          onLogout={handleLogout}
         />
 
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8 overflow-y-auto min-w-0">

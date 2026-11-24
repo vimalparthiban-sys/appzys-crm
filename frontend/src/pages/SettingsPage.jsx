@@ -117,24 +117,24 @@ export default function SettingsPage() {
         {/* Sources list chips */}
         <div className="pt-2">
           <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">
-            Available Platforms ({sources.length})
+            Active Discovery Platforms ({sources.filter((s) => s.name === 'LinkedIn' || s.name === 'Company Website').length})
           </label>
 
           <div className="flex flex-wrap gap-2">
-            {sources.map((s) => (
+            {(sources.filter((s) => s.name === 'LinkedIn' || s.name === 'Company Website').length > 0
+              ? sources.filter((s) => s.name === 'LinkedIn' || s.name === 'Company Website')
+              : [
+                  { id: 1, name: 'LinkedIn', isDefault: true },
+                  { id: 2, name: 'Company Website', isDefault: true },
+                ]
+            ).map((s) => (
               <div
-                key={s.id}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-medium text-crm-dark"
+                key={s.id || s.name}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50/70 border border-purple-200/60 text-xs font-semibold text-crm-dark shadow-2xs"
               >
+                <span className="w-2 h-2 rounded-full bg-crm-primary"></span>
                 <span>{s.name}</span>
-                {!s.isDefault && (
-                  <button
-                    onClick={() => handleDeleteSource(s.id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <span className="text-[10px] text-gray-400 font-normal ml-1">(Primary)</span>
               </div>
             ))}
           </div>

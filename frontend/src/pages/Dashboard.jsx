@@ -161,24 +161,33 @@ export default function Dashboard({ data, onOpenAddLead, error, onRetry }) {
           </div>
 
           <div className="space-y-3 my-auto">
-            {(!data?.leadsBySource || data.leadsBySource.length === 0) ? (
-              <div className="text-xs text-center py-4 text-crm-muted">No sources recorded yet.</div>
-            ) : (
-              data.leadsBySource.map((src) => (
-                <div key={src.platform} className="space-y-1">
-                  <div className="flex justify-between text-xs font-medium gap-2">
-                    <span className="text-crm-dark truncate">{src.platform}</span>
-                    <span className="text-crm-muted font-semibold shrink-0">{src.count} ({src.percentage}%)</span>
+            {(() => {
+              const allowedSources = (data?.leadsBySource || [])
+                .filter((src) => src.platform === 'LinkedIn' || src.platform === 'Company Website');
+              const totalCount = allowedSources.reduce((acc, s) => acc + (s.count || 0), 0);
+
+              if (allowedSources.length === 0) {
+                return <div className="text-xs text-center py-4 text-crm-muted">No sources recorded yet.</div>;
+              }
+
+              return allowedSources.map((src) => {
+                const pct = totalCount > 0 ? Math.round((src.count / totalCount) * 1000) / 10 : 0;
+                return (
+                  <div key={src.platform} className="space-y-1">
+                    <div className="flex justify-between text-xs font-medium gap-2">
+                      <span className="text-crm-dark truncate">{src.platform}</span>
+                      <span className="text-crm-muted font-semibold shrink-0">{src.count} ({pct}%)</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: src.color || (src.platform === 'LinkedIn' ? '#6D42D8' : '#3B82F6') }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${src.percentage}%`, backgroundColor: src.color || '#6D42D8' }}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
+                );
+              });
+            })()}
           </div>
 
           <div className="pt-4 mt-2 border-t border-gray-50 text-center">

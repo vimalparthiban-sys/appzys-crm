@@ -369,14 +369,20 @@ export default function ReportsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50 font-medium">
-                      {(data.sourcePerformance || []).length === 0 ? (
-                        <tr>
-                          <td colSpan="4" className="py-6 text-center text-gray-400 italic">
-                            No source records available in selected timeframe.
-                          </td>
-                        </tr>
-                      ) : (
-                        (data.sourcePerformance || []).map((source) => (
+                      {(() => {
+                        const validSources = (data.sourcePerformance || []).filter(
+                          (s) => s.platformName === 'LinkedIn' || s.platformName === 'Company Website'
+                        );
+                        if (validSources.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="4" className="py-6 text-center text-gray-400 italic">
+                                No source records available in selected timeframe.
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return validSources.map((source) => (
                           <tr key={source.platformName} className="hover:bg-gray-50/50 transition-colors">
                             <td className="py-3 font-semibold text-crm-dark flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-crm-primary"></span>
@@ -398,8 +404,8 @@ export default function ReportsPage() {
                               </span>
                             </td>
                           </tr>
-                        ))
-                      )}
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>

@@ -43,8 +43,6 @@ export default function CompanyDetailPage() {
   const [loading, setLoading] = useState(() => !cachedCompany);
   const [error, setError] = useState(null);
 
-  const [showAllActivities, setShowAllActivities] = useState(false);
-
   // Modals state
   const [showAddSource, setShowAddSource] = useState(false);
   const [showScheduleFollowUp, setShowScheduleFollowUp] = useState(false);
@@ -52,8 +50,12 @@ export default function CompanyDetailPage() {
   const [showEditCompany, setShowEditCompany] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
 
+  // Company History Modal
+  const [showCompanyHistoryModal, setShowCompanyHistoryModal] = useState(false);
+
   // Quick Outreach Modals
   const [showQuickContactModal, setShowQuickContactModal] = useState(false);
+  const [quickContactTarget, setQuickContactTarget] = useState(null); // null = company-level, or { contactId, personName }
   const [quickContactForm, setQuickContactForm] = useState({
     activityType: 'CALL',
     platform: 'Phone',
@@ -64,6 +66,7 @@ export default function CompanyDetailPage() {
   const [quickContactError, setQuickContactError] = useState(null);
 
   const [showQuickResponseModal, setShowQuickResponseModal] = useState(false);
+  const [quickResponseTarget, setQuickResponseTarget] = useState(null); // null = company-level, or { contactId, personName }
   const [quickResponseForm, setQuickResponseForm] = useState({
     responseType: 'Email',
     date: new Date().toISOString().slice(0, 10),
@@ -75,6 +78,7 @@ export default function CompanyDetailPage() {
   // Person-Level CRM Contacts state
   const [contacts, setContacts] = useState([]);
   const [expandedContactHistories, setExpandedContactHistories] = useState({});
+  const [expandedAllContactHistories, setExpandedAllContactHistories] = useState({});
   const [contactActivities, setContactActivities] = useState({});
   const [loadingHistories, setLoadingHistories] = useState({});
   const [showAddContactModal, setShowAddContactModal] = useState(false);
@@ -155,7 +159,7 @@ export default function CompanyDetailPage() {
     }
   };
 
-  // Quick Contact Activity Save
+  // Quick Contact Activity Save (Supports both Company-level and Person-level)
   const handleSaveQuickContact = async (e) => {
     e.preventDefault();
     setQuickContactSaving(true);
@@ -175,23 +179,47 @@ export default function CompanyDetailPage() {
         eventDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
       }
 
-      // 1. Save activity to database
-      await CRM_API.addActivity(id, {
-        activityType: quickContactForm.activityType,
-        platform: quickContactForm.platform || 'Phone',
-        title,
-        description: quickContactForm.description.trim() || null,
-        eventTimestamp: eventDate.toISOString(),
-      });
+      if (quickContactTarget?.contactId) {
+        // 1. PERSON-LEVEL OUTREACH
+        const contactId = quickContactTarget.contactId;
+        await CRM_API.addPersonActivity(id, contactId, {
+          activityType: quickContactForm.activityType,
+          platform: quickContactForm.platform || 'Phone',
+          title,
+          description: quickContactForm.description.trim() || null,
+          eventTimestamp: eventDate.toISOString(),
+        });
 
-      // 2. Advance stage to CONTACTED if not already Contacted
-      if (company.status !== 'CONTACTED') {
-        await CRM_API.updateStatus(id, 'CONTACTED');
+        // 2. Advance ONLY this contact's status to CONTACTED
+        const updatedContact = await CRM_API.updateContactStatus(id, contactId, 'CONTACTED');
+        setContacts((prev) => prev.map((c) => (c.id === contactId ? updatedContact : c)));
+
+        // 3. Refresh this contact's isolated activities
+        try {
+          const acts = await CRM_API.getPersonActivities(id, contactId);
+          setContactActivities((prev) => ({ ...prev, [contactId]: acts }));
+        } catch (_) {}
+      } else {
+        // 1. COMPANY-LEVEL OUTREACH
+        await CRM_API.addActivity(id, {
+          activityType: quickContactForm.activityType,
+          platform: quickContactForm.platform || 'Phone',
+          title,
+          description: quickContactForm.description.trim() || null,
+          eventTimestamp: eventDate.toISOString(),
+        });
+
+        // 2. Advance company stage to CONTACTED if not already Contacted
+        if (company.status !== 'CONTACTED') {
+          await CRM_API.updateStatus(id, 'CONTACTED');
+        }
+
+        // 3. Refresh company details
+        await fetchCompanyDetails();
       }
 
-      // 3. Refresh and close
-      await fetchCompanyDetails();
       setShowQuickContactModal(false);
+      setQuickContactTarget(null);
       setQuickContactForm((prev) => ({
         ...prev,
         description: '',
@@ -205,7 +233,7 @@ export default function CompanyDetailPage() {
     }
   };
 
-  // Quick Response Save
+  // Quick Response Save (Supports both Company-level and Person-level)
   const handleSaveQuickResponse = async (e) => {
     e.preventDefault();
     setQuickResponseSaving(true);
@@ -221,23 +249,47 @@ export default function CompanyDetailPage() {
         eventDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
       }
 
-      // 1. Save activity to database
-      await CRM_API.addActivity(id, {
-        activityType: 'REPLY',
-        platform: respType,
-        title,
-        description: quickResponseForm.description.trim() || null,
-        eventTimestamp: eventDate.toISOString(),
-      });
+      if (quickResponseTarget?.contactId) {
+        // 1. PERSON-LEVEL RESPONSE
+        const contactId = quickResponseTarget.contactId;
+        await CRM_API.addPersonActivity(id, contactId, {
+          activityType: 'REPLY',
+          platform: respType,
+          title,
+          description: quickResponseForm.description.trim() || null,
+          eventTimestamp: eventDate.toISOString(),
+        });
 
-      // 2. Advance stage to REPLY_RECEIVED if not already in that status
-      if (company.status !== 'REPLY_RECEIVED') {
-        await CRM_API.updateStatus(id, 'REPLY_RECEIVED');
+        // 2. Advance ONLY this contact's status to REPLY_RECEIVED
+        const updatedContact = await CRM_API.updateContactStatus(id, contactId, 'REPLY_RECEIVED');
+        setContacts((prev) => prev.map((c) => (c.id === contactId ? updatedContact : c)));
+
+        // 3. Refresh this contact's isolated activities
+        try {
+          const acts = await CRM_API.getPersonActivities(id, contactId);
+          setContactActivities((prev) => ({ ...prev, [contactId]: acts }));
+        } catch (_) {}
+      } else {
+        // 1. COMPANY-LEVEL RESPONSE
+        await CRM_API.addActivity(id, {
+          activityType: 'REPLY',
+          platform: respType,
+          title,
+          description: quickResponseForm.description.trim() || null,
+          eventTimestamp: eventDate.toISOString(),
+        });
+
+        // 2. Advance company stage to REPLY_RECEIVED if not already in that status
+        if (company.status !== 'REPLY_RECEIVED') {
+          await CRM_API.updateStatus(id, 'REPLY_RECEIVED');
+        }
+
+        // 3. Refresh company details
+        await fetchCompanyDetails();
       }
 
-      // 3. Refresh and close
-      await fetchCompanyDetails();
       setShowQuickResponseModal(false);
+      setQuickResponseTarget(null);
       setQuickResponseForm((prev) => ({
         ...prev,
         description: '',
@@ -469,9 +521,6 @@ export default function CompanyDetailPage() {
     );
   }
 
-  const allActivities = company.activities || [];
-  const displayedActivities = showAllActivities ? allActivities : allActivities.slice(0, 5);
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-fadeIn pb-12">
       {/* Back button */}
@@ -543,9 +592,20 @@ export default function CompanyDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Main Pipeline Stages + Secondary Statuses */}
           <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-soft space-y-4">
-            <div>
-              <h3 className="text-sm font-bold text-crm-dark">Pipeline Stage</h3>
-              <p className="text-xs text-crm-muted mt-0.5">Click to transition company across acquisition stages</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-gray-100">
+              <div>
+                <h3 className="text-sm font-bold text-crm-dark">Pipeline Stage</h3>
+                <p className="text-xs text-crm-muted mt-0.5">Click to transition company across acquisition stages</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCompanyHistoryModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-crm-primary text-xs font-semibold transition-all self-start sm:self-auto shrink-0 shadow-2xs"
+                title="View company-level pipeline history"
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>Company History ({(company.activities || []).filter((a) => !a.contactId).length})</span>
+              </button>
             </div>
 
             {/* Primary Acquisition Pipeline: Responsive grid 2 cols on mobile, 3 on sm, 6 on md */}
@@ -558,9 +618,11 @@ export default function CompanyDetailPage() {
                     onClick={() => {
                       if (stage.key === 'CONTACTED') {
                         setQuickContactError(null);
+                        setQuickContactTarget(null);
                         setShowQuickContactModal(true);
                       } else if (stage.key === 'REPLY_RECEIVED') {
                         setQuickResponseError(null);
+                        setQuickResponseTarget(null);
                         setShowQuickResponseModal(true);
                       } else {
                         handleStatusChange(stage.key);
@@ -767,7 +829,19 @@ export default function CompanyDetailPage() {
                             return (
                               <button
                                 key={st.key}
-                                onClick={() => handleUpdateContactStatus(contact.id, st.key)}
+                                onClick={() => {
+                                  if (st.key === 'CONTACTED') {
+                                    setQuickContactError(null);
+                                    setQuickContactTarget({ contactId: contact.id, personName: contact.personName });
+                                    setShowQuickContactModal(true);
+                                  } else if (st.key === 'REPLY_RECEIVED') {
+                                    setQuickResponseError(null);
+                                    setQuickResponseTarget({ contactId: contact.id, personName: contact.personName });
+                                    setShowQuickResponseModal(true);
+                                  } else {
+                                    handleUpdateContactStatus(contact.id, st.key);
+                                  }
+                                }}
                                 className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all shrink-0 ${
                                   isCur
                                     ? 'bg-crm-primary text-white shadow-xs'
@@ -800,36 +874,76 @@ export default function CompanyDetailPage() {
                             <div className="py-4 text-center text-xs text-gray-400">No activities recorded for this contact yet.</div>
                           ) : (
                             <div className="space-y-3">
-                              {historyList.map((item, hIdx) => (
-                                <div key={item.id || hIdx} className="flex items-start gap-3 text-xs">
-                                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                                    item.isAutomatic ? 'bg-purple-50 text-crm-primary' : 'bg-green-50 text-green-700'
-                                  }`}>
-                                    {item.activityType === 'EMAIL' && <Mail className="w-3.5 h-3.5" />}
-                                    {item.activityType === 'CALL' && <PhoneCall className="w-3.5 h-3.5" />}
-                                    {item.activityType === 'MEETING' && <Video className="w-3.5 h-3.5" />}
-                                    {item.activityType === 'MESSAGE' && <MessageSquare className="w-3.5 h-3.5" />}
-                                    {item.activityType === 'STATUS_CHANGED' && <Share2 className="w-3.5 h-3.5" />}
-                                    {!['EMAIL', 'CALL', 'MEETING', 'MESSAGE', 'STATUS_CHANGED'].includes(item.activityType) && <Clock className="w-3.5 h-3.5" />}
-                                  </div>
-                                  <div className="flex-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="font-bold text-crm-dark text-xs">{item.title}</span>
-                                      <span className="text-[10px] text-gray-400">
-                                        {item.eventTimestamp ? new Date(item.eventTimestamp).toLocaleString() : ''}
-                                      </span>
-                                    </div>
-                                    {item.description && (
-                                      <p className="text-gray-600 text-xs mt-1 leading-relaxed">{item.description}</p>
+                              {(() => {
+                                const isViewAll = !!expandedAllContactHistories[contact.id];
+                                const sortedHistory = [...historyList].sort(
+                                  (a, b) => new Date(b.eventTimestamp || b.createdAt) - new Date(a.eventTimestamp || a.createdAt)
+                                );
+                                const displayed = isViewAll ? sortedHistory : sortedHistory.slice(0, 5);
+
+                                return (
+                                  <>
+                                    {displayed.map((item, hIdx) => (
+                                      <div key={item.id || hIdx} className="flex items-start gap-3 text-xs">
+                                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                                          item.isAutomatic ? 'bg-purple-50 text-crm-primary' : 'bg-green-50 text-green-700'
+                                        }`}>
+                                          {item.activityType === 'EMAIL' && <Mail className="w-3.5 h-3.5" />}
+                                          {item.activityType === 'CALL' && <PhoneCall className="w-3.5 h-3.5" />}
+                                          {item.activityType === 'MEETING' && <Video className="w-3.5 h-3.5" />}
+                                          {item.activityType === 'MESSAGE' && <MessageSquare className="w-3.5 h-3.5" />}
+                                          {item.activityType === 'REPLY' && <CornerDownLeft className="w-3.5 h-3.5 text-teal-600" />}
+                                          {item.activityType === 'STATUS_CHANGED' && <Share2 className="w-3.5 h-3.5" />}
+                                          {!['EMAIL', 'CALL', 'MEETING', 'MESSAGE', 'REPLY', 'STATUS_CHANGED'].includes(item.activityType) && <Clock className="w-3.5 h-3.5" />}
+                                        </div>
+                                        <div className="flex-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="font-bold text-crm-dark text-xs">{item.title}</span>
+                                            <span className="text-[10px] text-gray-400 font-medium">
+                                              {item.eventTimestamp ? new Date(item.eventTimestamp).toLocaleString() : ''}
+                                            </span>
+                                          </div>
+                                          {item.description && (
+                                            <p className="text-gray-600 text-xs mt-1 leading-relaxed">{item.description}</p>
+                                          )}
+                                          {item.platform && !item.isAutomatic && (
+                                            <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded bg-gray-200/60 text-gray-600 font-medium">
+                                              {item.platform}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+
+                                    {sortedHistory.length > 5 && (
+                                      <div className="pt-2 text-center border-t border-gray-100">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setExpandedAllContactHistories((prev) => ({
+                                              ...prev,
+                                              [contact.id]: !isViewAll,
+                                            }))
+                                          }
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-crm-primary bg-purple-50 hover:bg-purple-100 transition-colors"
+                                        >
+                                          {isViewAll ? (
+                                            <>
+                                              <ChevronUp className="w-3.5 h-3.5" />
+                                              <span>Show Latest 5 Only</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <ChevronDown className="w-3.5 h-3.5" />
+                                              <span>View All Activities ({sortedHistory.length})</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
                                     )}
-                                    {item.platform && !item.isAutomatic && (
-                                      <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded bg-gray-200/60 text-gray-600 font-medium">
-                                        {item.platform}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
+                                  </>
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
@@ -837,124 +951,6 @@ export default function CompanyDetailPage() {
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </div>
-
-          {/* SECTION 11: ACTIVITY TIMELINE */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-soft space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div>
-                <h3 className="font-bold text-crm-dark">Contact History & Activity Timeline</h3>
-                <p className="text-xs text-crm-muted">
-                  Showing {displayedActivities.length} of {allActivities.length} activities (newest first)
-                </p>
-              </div>
-
-              <button
-                onClick={() => setShowAddActivity(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-crm-primary hover:bg-crm-primary-hover text-white text-xs font-semibold shadow-sm transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Log Activity</span>
-              </button>
-            </div>
-
-            {/* Timeline Entries */}
-            <div className="space-y-4 pt-2">
-              {displayedActivities.map((act, index) => (
-                <div key={act.id || index} className="flex items-start gap-4 relative">
-                  {index < (displayedActivities.length - 1) && (
-                    <div className="w-0.5 h-full bg-gray-100 absolute left-4 top-8 -z-0"></div>
-                  )}
-
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${
-                    act.isAutomatic ? 'bg-purple-50 text-crm-primary' : 'bg-green-50 text-green-700'
-                  }`}>
-                    {act.activityType === 'EMAIL' && <Mail className="w-4 h-4" />}
-                    {act.activityType === 'CALL' && <PhoneCall className="w-4 h-4" />}
-                    {act.activityType === 'MEETING' && <Video className="w-4 h-4" />}
-                    {act.activityType === 'MESSAGE' && <MessageSquare className="w-4 h-4" />}
-                    {act.activityType === 'REPLY' && <CornerDownLeft className="w-4 h-4 text-teal-600" />}
-                    {act.activityType === 'STATUS_CHANGED' && <Share2 className="w-4 h-4" />}
-                    {act.activityType === 'LEAD_CREATED' && <Plus className="w-4 h-4" />}
-                    {act.activityType === 'FOLLOWUP_SCHEDULED' && <CalendarClock className="w-4 h-4" />}
-                    {act.activityType === 'FOLLOWUP_RESCHEDULED' && <History className="w-4 h-4" />}
-                    {act.activityType === 'FOLLOWUP_COMPLETED' && <CheckCircle2 className="w-4 h-4" />}
-                    {!['EMAIL', 'CALL', 'MEETING', 'MESSAGE', 'REPLY', 'STATUS_CHANGED', 'LEAD_CREATED', 'FOLLOWUP_SCHEDULED', 'FOLLOWUP_RESCHEDULED', 'FOLLOWUP_COMPLETED'].includes(act.activityType) && <Clock className="w-4 h-4" />}
-                  </div>
-
-                  <div className="flex-1 bg-gray-50/60 p-3.5 rounded-2xl border border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold text-crm-dark">{act.title}</h4>
-                        {act.isAutomatic && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100 text-crm-primary font-medium">
-                            System
-                          </span>
-                        )}
-                        {act.platform && !act.isAutomatic && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-gray-200/60 text-gray-600 font-medium">
-                            {act.platform}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-gray-400">
-                          {act.eventTimestamp ? new Date(act.eventTimestamp).toLocaleString() : ''}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setEditingActivity(act);
-                            setActivityEditDesc(act.description || '');
-                          }}
-                          title="Edit description only (Type & timestamp immutable)"
-                          className="text-gray-400 hover:text-crm-primary transition-colors p-1"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {act.description && (
-                      <p className="text-xs text-crm-muted mt-1 leading-relaxed whitespace-pre-wrap">{act.description}</p>
-                    )}
-
-                    {act.outcome && (
-                      <div className="mt-2 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded w-fit">
-                        Outcome: {act.outcome}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {allActivities.length === 0 && (
-                <div className="text-center py-8 text-crm-muted text-xs">
-                  No activity recorded yet.
-                </div>
-              )}
-            </div>
-
-            {/* View Recent / View All Activities Button */}
-            {allActivities.length > 5 && (
-              <div className="pt-2 text-center border-t border-gray-100">
-                <button
-                  onClick={() => setShowAllActivities(!showAllActivities)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-crm-primary bg-purple-50 hover:bg-purple-100 transition-colors"
-                >
-                  {showAllActivities ? (
-                    <>
-                      <ChevronUp className="w-3.5 h-3.5" />
-                      <span>Show Recent 5 Only</span>
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                      <span>View All Activities ({allActivities.length})</span>
-                    </>
-                  )}
-                </button>
               </div>
             )}
           </div>
@@ -1114,6 +1110,129 @@ export default function CompanyDetailPage() {
         </div>
       </div>
 
+      {/* COMPANY PIPELINE HISTORY MODAL */}
+      {showCompanyHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-100 overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-crm-primary flex items-center justify-center shrink-0">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-base text-crm-dark">Company Pipeline History</h4>
+                  <p className="text-xs text-crm-muted truncate max-w-[280px] sm:max-w-none">
+                    Status transitions and outreach for <span className="font-semibold text-crm-dark">{company.name}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCompanyHistoryModal(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body - Scrollable Timeline */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-3.5 flex-1 scrollbar-thin">
+              {(() => {
+                const companyActs = (company.activities || [])
+                  .filter((a) => !a.contactId)
+                  .sort((a, b) => new Date(b.eventTimestamp || b.createdAt) - new Date(a.eventTimestamp || a.createdAt));
+
+                if (companyActs.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-xs text-crm-muted flex flex-col items-center justify-center gap-2">
+                      <History className="w-8 h-8 text-gray-300" />
+                      <p>No company-level history recorded yet.</p>
+                    </div>
+                  );
+                }
+
+                return companyActs.map((item, idx) => (
+                  <div key={item.id || idx} className="flex items-start gap-3 text-xs">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 shadow-2xs ${
+                        item.activityType === 'STATUS_CHANGED'
+                          ? 'bg-purple-100 text-crm-primary'
+                          : item.activityType === 'REPLY'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : item.activityType === 'CALL'
+                          ? 'bg-blue-100 text-blue-700'
+                          : item.activityType === 'EMAIL'
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {item.activityType === 'STATUS_CHANGED' && <Share2 className="w-4 h-4" />}
+                      {item.activityType === 'REPLY' && <CornerDownLeft className="w-4 h-4" />}
+                      {item.activityType === 'CALL' && <PhoneCall className="w-4 h-4" />}
+                      {item.activityType === 'EMAIL' && <Mail className="w-4 h-4" />}
+                      {!['STATUS_CHANGED', 'REPLY', 'CALL', 'EMAIL'].includes(item.activityType) && (
+                        <Clock className="w-4 h-4" />
+                      )}
+                    </div>
+
+                    <div className="flex-1 bg-gray-50/80 p-3 sm:p-3.5 rounded-xl border border-gray-100 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-crm-dark text-xs">{item.title}</span>
+                        <span className="text-[10px] text-gray-400 shrink-0 font-medium">
+                          {item.eventTimestamp
+                            ? new Date(item.eventTimestamp).toLocaleString(undefined, {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })
+                            : ''}
+                        </span>
+                      </div>
+
+                      {item.description && (
+                        <p className="text-gray-600 text-xs mt-1 leading-relaxed whitespace-pre-wrap font-normal">
+                          {item.description}
+                        </p>
+                      )}
+
+                      <div className="flex items-center gap-2 pt-1">
+                        {item.platform && !item.isAutomatic && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-gray-200/70 text-gray-700 font-semibold">
+                            {item.platform}
+                          </span>
+                        )}
+                        {item.isAutomatic && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-medium border border-purple-200/40">
+                            Pipeline Action
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 sm:p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <span className="text-[11px] text-gray-500 font-medium">
+                {
+                  (company.activities || []).filter((a) => !a.contactId).length
+                }{' '}
+                company-level events recorded
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowCompanyHistoryModal(false)}
+                className="px-4 py-1.5 rounded-xl bg-gray-200/80 hover:bg-gray-300 text-gray-700 text-xs font-semibold transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* QUICK POPUP 1: LOG CONTACT ACTIVITY (When Contacted status is clicked) */}
       {showQuickContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
@@ -1121,11 +1240,18 @@ export default function CompanyDetailPage() {
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div>
                 <h4 className="font-bold text-base text-crm-dark">Log Contact Activity</h4>
-                <p className="text-[11px] text-crm-muted mt-0.5">Quickly record outreach details for this company</p>
+                <p className="text-[11px] text-crm-muted mt-0.5">
+                  {quickContactTarget?.personName
+                    ? `Record outreach details for ${quickContactTarget.personName}`
+                    : 'Quickly record outreach details for this company'}
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowQuickContactModal(false)}
+                onClick={() => {
+                  setShowQuickContactModal(false);
+                  setQuickContactTarget(null);
+                }}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -1236,7 +1362,10 @@ export default function CompanyDetailPage() {
                 <button
                   type="button"
                   disabled={quickContactSaving}
-                  onClick={() => setShowQuickContactModal(false)}
+                  onClick={() => {
+                    setShowQuickContactModal(false);
+                    setQuickContactTarget(null);
+                  }}
                   className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                 >
                   Cancel
@@ -1261,11 +1390,18 @@ export default function CompanyDetailPage() {
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div>
                 <h4 className="font-bold text-base text-crm-dark">Log Received Response</h4>
-                <p className="text-[11px] text-crm-muted mt-0.5">Record what the client replied and advance stage</p>
+                <p className="text-[11px] text-crm-muted mt-0.5">
+                  {quickResponseTarget?.personName
+                    ? `Record received reply from ${quickResponseTarget.personName}`
+                    : 'Record what the client replied and advance stage'}
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowQuickResponseModal(false)}
+                onClick={() => {
+                  setShowQuickResponseModal(false);
+                  setQuickResponseTarget(null);
+                }}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -1345,7 +1481,10 @@ export default function CompanyDetailPage() {
                 <button
                   type="button"
                   disabled={quickResponseSaving}
-                  onClick={() => setShowQuickResponseModal(false)}
+                  onClick={() => {
+                    setShowQuickResponseModal(false);
+                    setQuickResponseTarget(null);
+                  }}
                   className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                 >
                   Cancel

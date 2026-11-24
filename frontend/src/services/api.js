@@ -4,6 +4,44 @@ const apiBase = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')}/api` 
   : '/api';
 
+export const AUTH_STORAGE_KEYS = {
+  TOKEN: 'crm_auth_token',
+  USER: 'crm_auth_user',
+  REMEMBER: 'crm_auth_remember',
+};
+
+export const getAuthToken = () => {
+  return localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN) || sessionStorage.getItem(AUTH_STORAGE_KEYS.TOKEN) || null;
+};
+
+export const setAuthToken = (token, username = '', remember = false) => {
+  if (remember) {
+    localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
+    localStorage.setItem(AUTH_STORAGE_KEYS.USER, username);
+    localStorage.setItem(AUTH_STORAGE_KEYS.REMEMBER, 'true');
+    sessionStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+    sessionStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+  } else {
+    sessionStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
+    sessionStorage.setItem(AUTH_STORAGE_KEYS.USER, username);
+    localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+    localStorage.removeItem(AUTH_STORAGE_KEYS.REMEMBER);
+  }
+};
+
+export const clearAuthToken = () => {
+  localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+  localStorage.removeItem(AUTH_STORAGE_KEYS.REMEMBER);
+  sessionStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+  sessionStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+};
+
+export const getAuthUser = () => {
+  return localStorage.getItem(AUTH_STORAGE_KEYS.USER) || sessionStorage.getItem(AUTH_STORAGE_KEYS.USER) || 'Admin';
+};
+
 const api = axios.create({
   baseURL: apiBase,
   headers: {
@@ -12,9 +50,26 @@ const api = axios.create({
   timeout: 15000,
 });
 
+// Attach Authorization Bearer token to every request
+api.interceptors.request.use(
+  (config) => {
+    const token = getAuthToken();
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Global response interceptor for 401 and 429 handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401) {
+      clearAuthToken();
+      window.dispatchEvent(new CustomEvent('crm:unauthorized'));
+    }
     let serverMessage = 'An unexpected server error occurred.';
     if (error.response?.data) {
       const data = error.response.data;
@@ -27,7 +82,10 @@ api.interceptors.response.use(
       serverMessage = error.message;
     }
     console.error('API Error:', serverMessage);
-    return Promise.reject(new Error(serverMessage));
+    const customErr = new Error(serverMessage);
+    customErr.status = error.response?.status;
+    customErr.retryAfter = error.response?.headers?.['retry-after'];
+    return Promise.reject(customErr);
   }
 );
 
@@ -47,6 +105,39 @@ export const CRM_CACHE = {
 };
 
 export const CRM_API = {
+  // Authentication & Access Control
+  login: async ({ username, password, rememberDevice = false }) => {
+    const res = await api.post('/auth/login', { username, password, rememberDevice });
+    if (res.data?.token) {
+      setAuthToken(res.data.token, res.data.username || username, rememberDevice);
+    }
+    return res.data;
+  },
+
+  logout: async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Continue client cleanup even if network fails
+    } finally {
+      clearAuthToken();
+      CRM_CACHE.clear();
+      window.dispatchEvent(new CustomEvent('crm:logout'));
+    }
+  },
+
+  checkAuth: async () => {
+    const token = getAuthToken();
+    if (!token) return { authenticated: false };
+    try {
+      const res = await api.get('/auth/check');
+      return res.data;
+    } catch {
+      clearAuthToken();
+      return { authenticated: false };
+    }
+  },
+
   // Dashboard Overview
   getDashboard: async () => {
     const res = await api.get('/dashboard/overview');

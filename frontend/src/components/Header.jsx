@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, RefreshCw, Plus, Target } from 'lucide-react';
+import { Search, RefreshCw, Plus, Target, LogOut } from 'lucide-react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { CRM_API } from '../services/api';
 
-export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenAddLead }) {
+export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenAddLead, onLogout }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
@@ -19,6 +20,13 @@ export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenA
       navigate(`/companies?search=${encodeURIComponent(query)}`);
     } else {
       navigate('/companies');
+    }
+  };
+
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to log out of APPZYS CRM?')) {
+      await CRM_API.logout();
+      if (onLogout) onLogout();
     }
   };
 
@@ -53,7 +61,7 @@ export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenA
         </form>
       </div>
 
-      {/* Right Controls: Add Lead & Auto-Refresh Sync */}
+      {/* Right Controls: Add Lead, Auto-Refresh Sync & Logout */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Primary Add Lead Button */}
         <button
@@ -76,6 +84,15 @@ export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenA
           <span className="hidden sm:inline">
             {isRefreshing ? 'Refreshing...' : `Sync: ${lastRefreshed || 'Just now'}`}
           </span>
+        </button>
+
+        {/* Mobile-only logout button (desktop has sidebar logout) */}
+        <button
+          onClick={handleLogout}
+          title="Log out"
+          className="md:hidden p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 bg-white transition-all"
+        >
+          <LogOut className="w-4 h-4" />
         </button>
       </div>
     </header>

@@ -1,13 +1,7 @@
--- Initial default reusable source options
+-- Initial default reusable source options (Only LinkedIn and Company Website)
 INSERT IGNORE INTO setting_sources (id, name, normalized_name, is_default) VALUES
 (1, 'LinkedIn', 'linkedin', TRUE),
-(2, 'Company Website', 'company website', TRUE),
-(3, 'Freelance Platform', 'freelance platform', TRUE),
-(4, 'Upwork', 'upwork', TRUE),
-(5, 'Clutch', 'clutch', TRUE),
-(6, 'Email Campaign', 'email campaign', TRUE),
-(7, 'Referral', 'referral', TRUE),
-(8, 'Other', 'other', TRUE);
+(2, 'Company Website', 'company website', TRUE);
 
 -- Sample Leads matching the reference mockups
 INSERT IGNORE INTO companies (id, name, normalized_name, official_website, normalized_website, contact_person, email, phone, status, created_at) VALUES
@@ -23,11 +17,11 @@ INSERT IGNORE INTO companies (id, name, normalized_name, official_website, norma
 INSERT IGNORE INTO company_sources (id, company_id, platform_name, source_url, normalized_source_url, notes, created_at) VALUES
 (1, 1, 'LinkedIn', 'https://www.linkedin.com/company/abc-technologies', 'linkedin.com/company/abc-technologies', 'Found through CTO profile post', NOW() - INTERVAL 5 DAY),
 (2, 2, 'Company Website', 'https://novasolutions.com/contact', 'novasolutions.com/contact', 'Contact form submission', NOW() - INTERVAL 4 DAY),
-(3, 3, 'Freelance Platform', 'https://upwork.com/jobs/pixelcraft-ux-redesign', 'upwork.com/jobs/pixelcraft-ux-redesign', 'Project RFP posting', NOW() - INTERVAL 3 DAY),
+(3, 3, 'LinkedIn', 'https://www.linkedin.com/company/pixelcraft-studio', 'linkedin.com/company/pixelcraft-studio', 'Project outreach inquiry', NOW() - INTERVAL 3 DAY),
 (4, 4, 'LinkedIn', 'https://www.linkedin.com/in/elena-rostova', 'linkedin.com/in/elena-rostova', 'InMail connection message sent', NOW() - INTERVAL 2 DAY),
 (5, 5, 'Company Website', 'https://blueskyind.org/about', 'blueskyind.org/about', 'Direct website research', NOW() - INTERVAL 6 DAY),
 (6, 6, 'LinkedIn', 'https://www.linkedin.com/company/horizon-ventures', 'linkedin.com/company/horizon-ventures', 'Lead list export', NOW() - INTERVAL 1 DAY),
-(7, 7, 'Referral', 'https://summitpartners.net', 'summitpartners.net', 'Referred by past client', NOW() - INTERVAL 10 DAY);
+(7, 7, 'LinkedIn', 'https://www.linkedin.com/company/summit-partners', 'linkedin.com/company/summit-partners', 'Direct outreach touchpoint', NOW() - INTERVAL 10 DAY);
 
 -- Sample Follow-ups with explicit status lifecycle
 INSERT IGNORE INTO follow_ups (id, company_id, scheduled_date, reason, status, is_completed, created_at) VALUES
