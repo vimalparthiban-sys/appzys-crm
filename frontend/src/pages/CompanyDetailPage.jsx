@@ -545,7 +545,7 @@ export default function CompanyDetailPage() {
             </div>
 
             {/* Primary Acquisition Pipeline */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+            <div className="overflow-x-auto flex gap-2 pb-2 scrollbar-none snap-x md:grid md:grid-cols-6 md:overflow-visible">
               {PIPELINE_STAGES.filter(s => s.key !== 'NO_REPLY' && s.key !== 'REJECTED').map((stage) => {
                 const isActive = company.status === stage.key;
                 return (
@@ -562,7 +562,7 @@ export default function CompanyDetailPage() {
                         handleStatusChange(stage.key);
                       }
                     }}
-                    className={`py-2 px-3 rounded-xl text-xs font-semibold text-center transition-all ${
+                    className={`min-w-[110px] sm:min-w-[125px] md:min-w-0 shrink-0 md:shrink snap-start py-2 px-3 rounded-xl text-xs font-semibold text-center transition-all ${
                       isActive
                         ? 'bg-crm-primary text-white shadow-md shadow-purple-950/20 scale-[1.02]'
                         : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'

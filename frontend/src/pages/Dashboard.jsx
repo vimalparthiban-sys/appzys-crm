@@ -79,8 +79,8 @@ export default function Dashboard({ data, onOpenAddLead, error, onRetry }) {
         </p>
       </div>
 
-      {/* Summary KPI Cards Grid (Ref 1 & 2) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* Summary KPI Cards Row: Swipeable on mobile, Grid on desktop */}
+      <div className="overflow-x-auto flex gap-3 pb-2 scrollbar-none snap-x md:grid md:grid-cols-3 lg:grid-cols-6 md:gap-4 md:overflow-visible">
         {stats.map((item, idx) => {
           const Icon = item.icon;
           return (
@@ -90,7 +90,7 @@ export default function Dashboard({ data, onOpenAddLead, error, onRetry }) {
                 if (item.urgency) navigate(`/follow-ups?tab=${item.urgency}`);
                 else if (item.filter) navigate(`/companies?status=${item.filter}`);
               }}
-              className="bg-white p-4 rounded-2xl border border-gray-100 shadow-soft hover:shadow-card hover:-translate-y-0.5 cursor-pointer transition-all duration-200"
+              className="min-w-[145px] sm:min-w-[160px] md:min-w-0 shrink-0 md:shrink snap-start bg-white p-4 rounded-2xl border border-gray-100 shadow-soft hover:shadow-card hover:-translate-y-0.5 cursor-pointer transition-all duration-200"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${item.color}`}>
@@ -102,7 +102,7 @@ export default function Dashboard({ data, onOpenAddLead, error, onRetry }) {
                   </span>
                 )}
               </div>
-              <p className="text-xs font-medium text-crm-muted">{item.label}</p>
+              <p className="text-xs font-medium text-crm-muted whitespace-nowrap">{item.label}</p>
               <h3 className="text-2xl font-bold text-crm-dark mt-1">{item.value}</h3>
             </div>
           );
@@ -123,12 +123,12 @@ export default function Dashboard({ data, onOpenAddLead, error, onRetry }) {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+          <div className="overflow-x-auto flex gap-2 pb-2 scrollbar-none snap-x md:grid md:grid-cols-6 md:overflow-visible">
             {pipelineStages.map((stage) => (
               <div
                 key={stage.key}
                 onClick={() => navigate(`/companies?status=${stage.key}`)}
-                className={`p-3 rounded-xl border border-gray-100 text-center cursor-pointer hover:shadow-md transition-all ${stage.color}`}
+                className={`min-w-[110px] sm:min-w-[125px] md:min-w-0 shrink-0 md:shrink snap-start p-3 rounded-xl border border-gray-100 text-center cursor-pointer hover:shadow-md transition-all ${stage.color}`}
               >
                 <div className="text-xs font-semibold mb-1 truncate">{stage.label}</div>
                 <div className="text-xl font-bold">{stage.count}</div>

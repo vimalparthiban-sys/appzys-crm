@@ -25,3 +25,12 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #6d42d8;
 }
+
+/* Hide scrollbars for smooth thumb-swiping horizontal lists on mobile */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

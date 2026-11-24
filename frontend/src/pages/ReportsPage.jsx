@@ -211,9 +211,9 @@ export default function ReportsPage() {
       {data && (
         <>
           {/* SECTION 1: KPI CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="overflow-x-auto flex gap-3 pb-2 scrollbar-none snap-x sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:gap-4">
             {/* Total Leads */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
+            <div className="min-w-[200px] sm:min-w-0 shrink-0 sm:shrink snap-start bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
               <div className="flex items-center justify-between text-xs font-semibold text-crm-muted">
                 <span>Total Leads</span>
                 <Users className="w-4 h-4 text-crm-primary" />
@@ -227,7 +227,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Reply Rate */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
+            <div className="min-w-[200px] sm:min-w-0 shrink-0 sm:shrink snap-start bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
               <div className="flex items-center justify-between text-xs font-semibold text-crm-muted">
                 <span>Reply Rate</span>
                 <TrendingUp className="w-4 h-4 text-sky-500" />
@@ -241,7 +241,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Overall Conversion Rate */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
+            <div className="min-w-[200px] sm:min-w-0 shrink-0 sm:shrink snap-start bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
               <div className="flex items-center justify-between text-xs font-semibold text-crm-muted">
                 <span>Conversion Rate</span>
                 <Target className="w-4 h-4 text-emerald-500" />
@@ -255,7 +255,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Best Performing Source */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
+            <div className="min-w-[200px] sm:min-w-0 shrink-0 sm:shrink snap-start bg-white p-5 rounded-2xl border border-gray-100 shadow-soft">
               <div className="flex items-center justify-between text-xs font-semibold text-crm-muted">
                 <span>Best Performing Source</span>
                 <PieChart className="w-4 h-4 text-purple-500" />
@@ -450,11 +450,11 @@ export default function ReportsPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="overflow-x-auto flex gap-3 pb-2 scrollbar-none snap-x sm:grid sm:grid-cols-3 lg:grid-cols-6 sm:overflow-visible">
               {(data.activitySummary || []).map((act) => (
                 <div
                   key={act.activityType}
-                  className="p-4 rounded-xl border border-gray-100 bg-white shadow-2xs hover:border-purple-200 transition-colors text-center space-y-1.5"
+                  className="min-w-[125px] sm:min-w-0 shrink-0 sm:shrink snap-start p-4 rounded-xl border border-gray-100 bg-white shadow-2xs hover:border-purple-200 transition-colors text-center space-y-1.5"
                 >
                   <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center mx-auto">
                     {getActivityIcon(act.iconName)}

@@ -55,10 +55,10 @@ export default function FollowUpsPage() {
       </div>
 
       {/* Tabs Switcher */}
-      <div className="flex gap-3 border-b border-gray-200">
+      <div className="overflow-x-auto flex gap-3 border-b border-gray-200 scrollbar-none snap-x whitespace-nowrap">
         <button
           onClick={() => handleTabChange('TODAY')}
-          className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
+          className={`shrink-0 snap-start pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
             activeTab === 'TODAY'
               ? 'border-crm-primary text-crm-primary'
               : 'border-transparent text-gray-500 hover:text-gray-800'
@@ -70,7 +70,7 @@ export default function FollowUpsPage() {
 
         <button
           onClick={() => handleTabChange('OVERDUE')}
-          className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
+          className={`shrink-0 snap-start pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
             activeTab === 'OVERDUE'
               ? 'border-red-600 text-red-600'
               : 'border-transparent text-gray-500 hover:text-gray-800'
@@ -82,7 +82,7 @@ export default function FollowUpsPage() {
 
         <button
           onClick={() => handleTabChange('UPCOMING')}
-          className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
+          className={`shrink-0 snap-start pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
             activeTab === 'UPCOMING'
               ? 'border-crm-primary text-crm-primary'
               : 'border-transparent text-gray-500 hover:text-gray-800'
