@@ -16,6 +16,8 @@ target/
 *.log
 crm_tidb_dump.sql
 sources.txt
+test-sources.txt
+backend/crm-backend/
 
 # IDE
 .idea/

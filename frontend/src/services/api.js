@@ -6,40 +6,28 @@ const apiBase = import.meta.env.VITE_API_BASE_URL
 
 export const AUTH_STORAGE_KEYS = {
   TOKEN: 'crm_auth_token',
-  USER: 'crm_auth_user',
-  REMEMBER: 'crm_auth_remember',
+  MEMBER: 'crm_auth_member_name',
+  MEMBER_ID: 'crm_auth_member_id',
 };
 
 export const getAuthToken = () => {
-  return localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN) || sessionStorage.getItem(AUTH_STORAGE_KEYS.TOKEN) || null;
+  return localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN) || null;
 };
 
-export const setAuthToken = (token, username = '', remember = false) => {
-  if (remember) {
-    localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
-    localStorage.setItem(AUTH_STORAGE_KEYS.USER, username);
-    localStorage.setItem(AUTH_STORAGE_KEYS.REMEMBER, 'true');
-    sessionStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
-    sessionStorage.removeItem(AUTH_STORAGE_KEYS.USER);
-  } else {
-    sessionStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
-    sessionStorage.setItem(AUTH_STORAGE_KEYS.USER, username);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.REMEMBER);
-  }
+export const setAuthToken = (token, memberName = 'Team Member', memberId = '') => {
+  localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
+  localStorage.setItem(AUTH_STORAGE_KEYS.MEMBER, memberName);
+  if (memberId) localStorage.setItem(AUTH_STORAGE_KEYS.MEMBER_ID, memberId);
 };
 
 export const clearAuthToken = () => {
   localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
-  localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
-  localStorage.removeItem(AUTH_STORAGE_KEYS.REMEMBER);
-  sessionStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
-  sessionStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+  localStorage.removeItem(AUTH_STORAGE_KEYS.MEMBER);
+  localStorage.removeItem(AUTH_STORAGE_KEYS.MEMBER_ID);
 };
 
 export const getAuthUser = () => {
-  return localStorage.getItem(AUTH_STORAGE_KEYS.USER) || sessionStorage.getItem(AUTH_STORAGE_KEYS.USER) || 'Admin';
+  return localStorage.getItem(AUTH_STORAGE_KEYS.MEMBER) || 'Team Member';
 };
 
 const api = axios.create({
@@ -105,25 +93,13 @@ export const CRM_CACHE = {
 };
 
 export const CRM_API = {
-  // Authentication & Access Control
-  login: async ({ username, password, rememberDevice = false }) => {
-    const res = await api.post('/auth/login', { username, password, rememberDevice });
+  // One-time invite code + 6-digit PIN device activation
+  exchangeInvite: async ({ inviteCode, pin }) => {
+    const res = await api.post('/auth/exchange', { inviteCode, pin });
     if (res.data?.token) {
-      setAuthToken(res.data.token, res.data.username || username, rememberDevice);
+      setAuthToken(res.data.token, res.data.memberName || 'Team Member', res.data.memberId || '');
     }
     return res.data;
-  },
-
-  logout: async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // Continue client cleanup even if network fails
-    } finally {
-      clearAuthToken();
-      CRM_CACHE.clear();
-      window.dispatchEvent(new CustomEvent('crm:logout'));
-    }
   },
 
   checkAuth: async () => {
@@ -183,6 +159,12 @@ export const CRM_API = {
 
   updateLead: async (id, payload) => {
     const res = await api.put(`/companies/${id}`, payload);
+    CRM_CACHE.clear();
+    return res.data;
+  },
+
+  deleteCompany: async (id) => {
+    const res = await api.delete(`/companies/${id}`);
     CRM_CACHE.clear();
     return res.data;
   },

@@ -4,7 +4,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import AddLeadModal from './components/AddLeadModal';
-import LoginModal from './components/LoginModal';
+import DeviceActivationModal, { AccessRestrictedScreen } from './components/DeviceActivationModal';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -24,6 +24,11 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(null);
   const [lastRefreshed, setLastRefreshed] = useState('');
+
+  // Check if current URL contains a one-time activation invite code
+  const [inviteCode, setInviteCode] = useState(() => {
+    return new URLSearchParams(window.location.search).get('invite');
+  });
 
   // Fetch / Sync CRM data from Backend
   const loadDashboardData = useCallback(async () => {
@@ -46,7 +51,7 @@ export default function App() {
     }
   }, []);
 
-  // Listen for unauthorized or logout custom events
+  // Listen for unauthorized events (e.g. Session revoked by admin)
   useEffect(() => {
     const handleUnauthorized = () => {
       setIsAuthenticated(false);
@@ -54,18 +59,9 @@ export default function App() {
       CRM_CACHE.clear();
     };
 
-    const handleLogout = () => {
-      setIsAuthenticated(false);
-      setDashboardData(null);
-      CRM_CACHE.clear();
-    };
-
     window.addEventListener('crm:unauthorized', handleUnauthorized);
-    window.addEventListener('crm:logout', handleLogout);
-
     return () => {
       window.removeEventListener('crm:unauthorized', handleUnauthorized);
-      window.removeEventListener('crm:logout', handleLogout);
     };
   }, []);
 
@@ -76,13 +72,27 @@ export default function App() {
     }
   }, [isAuthenticated, loadDashboardData]);
 
-  // Periodic auto-refresh every 5 minutes (300 seconds)
+  // 60-Second background auto-sync across all 4 team members
   useEffect(() => {
     if (!isAuthenticated) return;
     const interval = setInterval(() => {
       loadDashboardData();
-    }, 300000);
+    }, 60000); // 60 seconds
     return () => clearInterval(interval);
+  }, [isAuthenticated, loadDashboardData]);
+
+  // Tab-focus and event-based revalidation: Re-sync immediately
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const handleRefresh = () => {
+      loadDashboardData();
+    };
+    window.addEventListener('focus', handleRefresh);
+    window.addEventListener('crm:refresh', handleRefresh);
+    return () => {
+      window.removeEventListener('focus', handleRefresh);
+      window.removeEventListener('crm:refresh', handleRefresh);
+    };
   }, [isAuthenticated, loadDashboardData]);
 
   const handleLeadCreated = (newLead) => {
@@ -90,25 +100,31 @@ export default function App() {
     navigate(`/companies/${newLead.id}`);
   };
 
-  const handleLoginSuccess = () => {
+  const handleActivationSuccess = () => {
+    // Clean up one-time invite code from browser address bar
+    window.history.replaceState({}, '', window.location.pathname);
+    setInviteCode(null);
     setIsAuthenticated(true);
     loadDashboardData();
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setDashboardData(null);
-  };
-
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-crm-bg text-crm-dark">
-      {/* Login Screen Gate if not authenticated */}
-      {!isAuthenticated && (
-        <LoginModal onLoginSuccess={handleLoginSuccess} />
+      {/* 1. If an invitation code is present in URL, prompt for 6-digit PIN */}
+      {inviteCode && !isAuthenticated && (
+        <DeviceActivationModal
+          inviteCode={inviteCode}
+          onActivationSuccess={handleActivationSuccess}
+        />
+      )}
+
+      {/* 2. If no invitation code and not authenticated, show static Access Restricted screen */}
+      {!inviteCode && !isAuthenticated && (
+        <AccessRestrictedScreen />
       )}
 
       {/* Desktop Left Sidebar (hidden on mobile) */}
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar />
 
       {/* Main Content Pane */}
       <div className="flex-1 h-screen flex flex-col min-w-0 overflow-hidden relative">
@@ -117,7 +133,6 @@ export default function App() {
           isRefreshing={isRefreshing}
           lastRefreshed={lastRefreshed}
           onOpenAddLead={() => setIsAddLeadOpen(true)}
-          onLogout={handleLogout}
         />
 
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8 overflow-y-auto min-w-0">

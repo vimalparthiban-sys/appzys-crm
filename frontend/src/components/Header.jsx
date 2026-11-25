@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, RefreshCw, Plus, Target, LogOut } from 'lucide-react';
+import { Search, RefreshCw, Plus, Target } from 'lucide-react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { CRM_API } from '../services/api';
 
-export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenAddLead, onLogout }) {
+export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenAddLead }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
@@ -20,13 +19,6 @@ export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenA
       navigate(`/companies?search=${encodeURIComponent(query)}`);
     } else {
       navigate('/companies');
-    }
-  };
-
-  const handleLogout = async () => {
-    if (window.confirm('Are you sure you want to log out of APPZYS CRM?')) {
-      await CRM_API.logout();
-      if (onLogout) onLogout();
     }
   };
 
@@ -56,12 +48,12 @@ export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenA
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search leads..."
-            className="w-full pl-8 sm:pl-10 pr-2.5 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-50/90 rounded-full border border-gray-200/80 focus:outline-none focus:ring-2 focus:ring-crm-primary/20 focus:border-crm-primary transition-all text-crm-dark placeholder-gray-400 min-w-[100px]"
+            className="w-full pl-8 sm:pl-10 pr-2.5 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-50/90 rounded-full border border-gray-200/80 focus:outline-none focus:ring-2 focus:ring-crm-primary/20 focus:border-crm-primary text-crm-dark placeholder-gray-400 min-w-[100px]"
           />
         </form>
       </div>
 
-      {/* Right Controls: Add Lead, Auto-Refresh Sync & Logout */}
+      {/* Right Controls: Add Lead & Auto-Refresh Sync */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Primary Add Lead Button */}
         <button
@@ -77,22 +69,13 @@ export default function Header({ onRefresh, isRefreshing, lastRefreshed, onOpenA
         <button
           onClick={onRefresh}
           disabled={isRefreshing}
-          title="Auto-refreshes every 5 mins. Click to refresh now."
+          title="Auto-refreshes every 60s. Click to refresh now."
           className="flex items-center gap-1.5 sm:gap-2 text-xs font-medium text-gray-500 hover:text-crm-primary p-2 sm:px-3.5 sm:py-2 rounded-xl border border-gray-200 hover:border-crm-light bg-white transition-all disabled:opacity-50 shrink-0"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-crm-primary' : ''}`} />
           <span className="hidden sm:inline">
             {isRefreshing ? 'Refreshing...' : `Sync: ${lastRefreshed || 'Just now'}`}
           </span>
-        </button>
-
-        {/* Mobile-only logout button (desktop has sidebar logout) */}
-        <button
-          onClick={handleLogout}
-          title="Log out"
-          className="md:hidden p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 bg-white transition-all"
-        >
-          <LogOut className="w-4 h-4" />
         </button>
       </div>
     </header>

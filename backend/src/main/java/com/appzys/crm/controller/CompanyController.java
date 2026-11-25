@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/companies")
@@ -101,5 +102,22 @@ public class CompanyController {
             @PathVariable("activityId") Long activityId,
             @Valid @RequestBody ActivityUpdateDescriptionRequest req) {
         return ResponseEntity.ok(companyService.updateActivityDescription(companyId, activityId, req));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteCompany(@PathVariable("id") Long id) {
+        try {
+            companyService.deleteCompany(id);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Company deleted successfully.",
+                    "deletedId", id
+            ));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
     }
 }

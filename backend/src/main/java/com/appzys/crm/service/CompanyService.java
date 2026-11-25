@@ -484,4 +484,44 @@ public class CompanyService {
                 .createdAt(a.getCreatedAt())
                 .build();
     }
+
+    /**
+     * Deletes a specific company and its associated records cleanly (activities, contacts, follow-ups, sources).
+     * Guarantees zero orphaned records and strictly isolates deletion to the target company ID.
+     *
+     * @param id the ID of the company to delete
+     * @throws NoSuchElementException if the company does not exist
+     */
+    @Transactional
+    public void deleteCompany(Long id) {
+        Company company = companyRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Company not found with id: " + id));
+
+        // 1. Delete dependent activities belonging to this company first
+        List<Activity> activities = activityRepository.findByCompanyIdOrderByEventTimestampDesc(id);
+        if (!activities.isEmpty()) {
+            activityRepository.deleteAll(activities);
+        }
+
+        // 2. Delete contacts belonging to this company
+        List<CompanyContact> contacts = contactRepository.findByCompanyIdOrderByCreatedAtAsc(id);
+        if (!contacts.isEmpty()) {
+            contactRepository.deleteAll(contacts);
+        }
+
+        // 3. Delete follow-ups belonging to this company
+        List<FollowUp> followUps = followUpRepository.findByCompanyIdOrderByScheduledDateAsc(id);
+        if (!followUps.isEmpty()) {
+            followUpRepository.deleteAll(followUps);
+        }
+
+        // 4. Delete company sources belonging to this company
+        List<CompanySource> sources = companySourceRepository.findByCompanyId(id);
+        if (!sources.isEmpty()) {
+            companySourceRepository.deleteAll(sources);
+        }
+
+        // 5. Delete the parent company record
+        companyRepository.delete(company);
+    }
 }

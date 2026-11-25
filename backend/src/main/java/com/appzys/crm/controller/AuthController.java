@@ -1,7 +1,7 @@
 package com.appzys.crm.controller;
 
-import com.appzys.crm.dto.AuthLoginRequest;
-import com.appzys.crm.dto.AuthResponseDto;
+import com.appzys.crm.dto.InviteExchangeRequest;
+import com.appzys.crm.dto.InviteExchangeResponse;
 import com.appzys.crm.service.AuthSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -22,23 +22,23 @@ public class AuthController {
 
     private final AuthSessionService authSessionService;
 
-    @PostMapping("/login")
-    public ResponseEntity<AuthResponseDto> login(
-            @Valid @RequestBody AuthLoginRequest request,
+    @PostMapping("/exchange")
+    public ResponseEntity<InviteExchangeResponse> exchange(
+            @Valid @RequestBody InviteExchangeRequest request,
             HttpServletRequest httpRequest
     ) {
-        AuthSessionService.LoginResult result = authSessionService.authenticate(request, httpRequest);
-        
+        AuthSessionService.ExchangeResult result = authSessionService.exchangeInvite(request, httpRequest);
+
         if (result.rateLimited()) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .header(HttpHeaders.RETRY_AFTER, String.valueOf(result.retryAfterSeconds()))
-                    .body(result.responseDto());
+                    .body(result.response());
         }
-        
-        if (result.authenticated()) {
-            return ResponseEntity.ok(result.responseDto());
+
+        if (result.success()) {
+            return ResponseEntity.ok(result.response());
         } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result.responseDto());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result.response());
         }
     }
 
@@ -48,9 +48,12 @@ public class AuthController {
     ) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7).trim();
-            if (authSessionService.validateToken(token)) {
+            if (authSessionService.validateMemberToken(token)) {
+                var sessionOpt = authSessionService.getSessionFromToken(token);
                 return ResponseEntity.ok(Map.of(
                         "authenticated", true,
+                        "memberId", sessionOpt.map(AuthSessionService.CachedSession::memberId).orElse("unknown"),
+                        "memberName", sessionOpt.map(AuthSessionService.CachedSession::memberName).orElse("Team Member"),
                         "message", "Session active"
                 ));
             }
@@ -61,26 +64,12 @@ public class AuthController {
         ));
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout(
-            @RequestHeader(value = "Authorization", required = false) String authHeader
-    ) {
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7).trim();
-            authSessionService.revokeSession(token);
-        }
-        return ResponseEntity.ok(Map.of(
-                "authenticated", false,
-                "message", "Logged out successfully"
-        ));
-    }
-
     @GetMapping("/health")
     public ResponseEntity<?> health() {
         return ResponseEntity.ok(Map.of(
                 "status", "UP",
                 "service", "APPZYS Client Acquisition CRM",
-                "activeSessions", authSessionService.getActiveSessionCount()
+                "authMode", "Permanent Access with One-Time Activation"
         ));
     }
 }

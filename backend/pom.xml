@@ -56,6 +56,12 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+
+        <!-- Spring Security Crypto for BCrypt PIN hashing -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
         
         <!-- Spring Boot Starter Test -->
         <dependency>
@@ -91,6 +97,11 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <environmentVariables>
+                        <CRM_ACCESS_USERNAME>admin</CRM_ACCESS_USERNAME>
+                        <CRM_ACCESS_PASSWORD>AppzysCRM2026!Secure</CRM_ACCESS_PASSWORD>
+                        <CRM_AUTH_SECRET>local-dev-transient-secret-key-minimum-32-chars</CRM_AUTH_SECRET>
+                    </environmentVariables>
                 </configuration>
             </plugin>
         </plugins>

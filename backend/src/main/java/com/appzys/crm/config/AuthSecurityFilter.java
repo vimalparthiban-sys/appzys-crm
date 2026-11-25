@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -49,26 +50,64 @@ public class AuthSecurityFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 4. Extract and validate Bearer token
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            rejectUnauthorized(response, "Authentication required. Please log in.");
+            rejectUnauthorized(response, "Authentication required. Please provide a valid authorization token.");
             return;
         }
 
         String token = authHeader.substring(7).trim();
-        if (!authSessionService.validateToken(token)) {
-            rejectUnauthorized(response, "Session expired or invalid token. Please log in again.");
+
+        // 4. Dedicated AI endpoints isolation (/api/ai/**)
+        if (path.startsWith("/api/ai/")) {
+            Optional<String> agentOpt = authSessionService.validateAiToken(token);
+            if (agentOpt.isEmpty()) {
+                rejectUnauthorized(response, "Invalid or unauthorized AI integration credentials.");
+                return;
+            }
+            // Bind validated agent identity to request
+            request.setAttribute("authenticated_ai_agent", agentOpt.get());
+            filterChain.doFilter(request, response);
             return;
         }
 
-        // Authentication verified, proceed down the chain
+        // 5. Admin management endpoints (/api/admin/**)
+        if (path.startsWith("/api/admin/")) {
+            if (!authSessionService.validateMasterAdminKey(token)) {
+                rejectUnauthorized(response, "Unauthorized admin access.");
+                return;
+            }
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 6. Core Team CRM endpoints (/api/companies, /api/dashboard, /api/reports, etc.)
+        // AI credentials CANNOT access human endpoints
+        if (authSessionService.validateAiToken(token).isPresent()) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"AI credentials are not permitted to access interactive team CRM endpoints.\"}");
+            return;
+        }
+
+        // Validate human member session (Database-backed)
+        if (!authSessionService.validateMemberToken(token)) {
+            rejectUnauthorized(response, "Session expired, revoked, or invalid. Please re-authenticate.");
+            return;
+        }
+
+        // Bind member session info if present
+        authSessionService.getSessionFromToken(token).ifPresent(session -> {
+            request.setAttribute("crm_member_id", session.memberId());
+            request.setAttribute("crm_member_name", session.memberName());
+        });
+
         filterChain.doFilter(request, response);
     }
 
     private boolean isPublicEndpoint(String method, String path) {
-        // Login endpoint
-        if ("POST".equalsIgnoreCase(method) && "/api/auth/login".equalsIgnoreCase(path)) {
+        // Invite + PIN exchange endpoint
+        if ("POST".equalsIgnoreCase(method) && "/api/auth/exchange".equalsIgnoreCase(path)) {
             return true;
         }
         // Health check endpoint

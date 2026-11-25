@@ -14,12 +14,15 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  ChevronRight
+  ChevronRight,
+  Trash2,
+  CheckCircle2
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CRM_API, CRM_CACHE } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import FollowUpBadge from '../components/FollowUpBadge';
+import DeleteCompanyModal from '../components/DeleteCompanyModal';
 
 const KANBAN_STAGES = [
   { key: 'FOUND', title: 'Found', headerBg: 'bg-[#4338CA]', isHighlight: false },
@@ -257,6 +260,10 @@ export default function CompaniesPage({ onOpenAddLead }) {
   const [loading, setLoading] = useState(() => !initialCached);
   const [error, setError] = useState(null);
 
+  // Individual company delete state & success toast
+  const [deleteModalCompany, setDeleteModalCompany] = useState(null);
+  const [toastMessage, setToastMessage] = useState('');
+
   // Drag-and-drop state (desktop mouse HTML5 + mobile long-press touch)
   const [draggedLeadId, setDraggedLeadId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
@@ -292,6 +299,16 @@ export default function CompaniesPage({ onOpenAddLead }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCompanyDeleted = (deletedId) => {
+    setCompanies((prev) => prev.filter((c) => c.id !== deletedId));
+    CRM_CACHE.clear();
+    setToastMessage('Company deleted successfully.');
+    setTimeout(() => {
+      setToastMessage('');
+    }, 4000);
+    fetchCompanies();
   };
 
   // Reactively re-fetch whenever global search, date range, or any filter changes
@@ -841,8 +858,19 @@ export default function CompaniesPage({ onOpenAddLead }) {
                         )}
                       </div>
                     </div>
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex items-center gap-1.5">
                       <StatusBadge status={c.status} />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteModalCompany(c);
+                        }}
+                        title="Delete Company"
+                        className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
 
@@ -986,15 +1014,28 @@ export default function CompaniesPage({ onOpenAddLead }) {
                         </td>
 
                         <td className="py-4 px-6 text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/companies/${c.id}`);
-                            }}
-                            className="px-3 py-1 rounded-lg border border-gray-200 text-crm-primary hover:bg-purple-50 font-semibold text-xs transition-colors"
-                          >
-                            View Details
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/companies/${c.id}`);
+                              }}
+                              className="px-3 py-1 rounded-lg border border-gray-200 text-crm-primary hover:bg-purple-50 font-semibold text-xs transition-colors"
+                            >
+                              View Details
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteModalCompany(c);
+                              }}
+                              title="Delete Company"
+                              className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1003,6 +1044,28 @@ export default function CompaniesPage({ onOpenAddLead }) {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Delete Company Confirmation Modal */}
+      <DeleteCompanyModal
+        isOpen={!!deleteModalCompany}
+        company={deleteModalCompany}
+        onClose={() => setDeleteModalCompany(null)}
+        onDeleted={handleCompanyDeleted}
+      />
+
+      {/* Success Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-gray-900 text-white rounded-2xl shadow-2xl border border-gray-800 animate-slideUp text-xs font-semibold">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage('')}
+            className="ml-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
     </div>
