@@ -2,7 +2,9 @@ import axios from 'axios';
 
 const apiBase = import.meta.env.VITE_API_BASE_URL 
   ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')}/api` 
-  : '/api';
+  : (import.meta.env.PROD 
+      ? 'https://appzys-crm-backend.onrender.com/api' 
+      : '/api');
 
 export const AUTH_STORAGE_KEYS = {
   TOKEN: 'crm_auth_token',

@@ -1,6 +1,7 @@
 package com.appzys.crm;
 
 import com.appzys.crm.config.AuthSecurityFilter;
+import com.appzys.crm.config.WebCorsConfig;
 import com.appzys.crm.dto.DuplicateCheckResponse;
 import com.appzys.crm.dto.InviteExchangeRequest;
 import com.appzys.crm.dto.InviteExchangeResponse;
@@ -69,7 +70,9 @@ public class SecurityArchitectureTestSuite {
         authSessionService.setMaxLoginAttempts(5);
         authSessionService.setLockoutMinutes(15);
 
-        authSecurityFilter = new AuthSecurityFilter(authSessionService);
+        WebCorsConfig webCorsConfig = new WebCorsConfig();
+        webCorsConfig.setAllowedOriginsConfig("https://appzys-crm-frontend.onrender.com,http://localhost:3000");
+        authSecurityFilter = new AuthSecurityFilter(authSessionService, webCorsConfig);
     }
 
     // =========================================================================
@@ -723,6 +726,230 @@ public class SecurityArchitectureTestSuite {
         assertEquals("emp1", emp1Enrollment.memberId());
         assertEquals("Vimal P", emp1Enrollment.memberName());
         assertEquals(2, inviteRepository.count(), "On-demand enrollment adds an invite for emp1 without affecting emp2");
+    }
+
+    // =========================================================================
+    // TEST 23: Production Frontend Origin Receives Correct CORS Headers
+    // =========================================================================
+    @Test
+    @DisplayName("Test 23: Production frontend origin receives correct CORS headers")
+    public void test23_AllowedOriginReceivesCorrectCorsHeaders() throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/dashboard/overview");
+        request.addHeader("Origin", "https://appzys-crm-frontend.onrender.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        TestFilterChain chain = new TestFilterChain();
+
+        authSecurityFilter.doFilter(request, response, chain);
+
+        assertEquals("https://appzys-crm-frontend.onrender.com", response.getHeader("Access-Control-Allow-Origin"),
+                "Allowed origin must receive exact Access-Control-Allow-Origin header");
+        assertEquals(1, response.getHeaders("Access-Control-Allow-Origin").size(),
+                "Access-Control-Allow-Origin must not be duplicated in response headers");
+        assertEquals("true", response.getHeader("Access-Control-Allow-Credentials"),
+                "Credentials must be allowed for trusted production origin");
+    }
+
+    // =========================================================================
+    // TEST 24: Disallowed Origin is Rejected by CORS
+    // =========================================================================
+    @Test
+    @DisplayName("Test 24: Disallowed origin does not receive Access-Control-Allow-Origin header")
+    public void test24_DisallowedOriginRejectedByCors() throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/dashboard/overview");
+        request.addHeader("Origin", "https://malicious-site.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        TestFilterChain chain = new TestFilterChain();
+
+        authSecurityFilter.doFilter(request, response, chain);
+
+        assertNull(response.getHeader("Access-Control-Allow-Origin"),
+                "Disallowed origin must NOT receive Access-Control-Allow-Origin header");
+    }
+
+    // =========================================================================
+    // TEST 25: OPTIONS Preflight Request Handling
+    // =========================================================================
+    @Test
+    @DisplayName("Test 25: OPTIONS preflight returns 200 with required CORS headers and methods")
+    public void test25_OptionsPreflightHandling() throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/api/dashboard/overview");
+        request.addHeader("Origin", "https://appzys-crm-frontend.onrender.com");
+        request.addHeader("Access-Control-Request-Method", "GET");
+        request.addHeader("Access-Control-Request-Headers", "Authorization, Content-Type");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        TestFilterChain chain = new TestFilterChain();
+
+        authSecurityFilter.doFilter(request, response, chain);
+
+        assertEquals(200, response.getStatus(), "OPTIONS preflight must return 200 OK");
+        assertEquals("https://appzys-crm-frontend.onrender.com", response.getHeader("Access-Control-Allow-Origin"));
+        assertEquals("true", response.getHeader("Access-Control-Allow-Credentials"));
+        assertTrue(response.getHeader("Access-Control-Allow-Methods").contains("GET"));
+        assertTrue(response.getHeader("Access-Control-Allow-Methods").contains("POST"));
+        assertTrue(response.getHeader("Access-Control-Allow-Methods").contains("DELETE"));
+        assertTrue(response.getHeader("Access-Control-Allow-Headers").contains("Authorization"));
+        assertTrue(response.getHeader("Access-Control-Allow-Headers").contains("Content-Type"));
+    }
+
+    // =========================================================================
+    // TEST 26: Authorization Header Accepted by CORS
+    // =========================================================================
+    @Test
+    @DisplayName("Test 26: Authorization header is explicitly listed in CORS allowed headers")
+    public void test26_AuthorizationHeaderAcceptedByCors() {
+        WebCorsConfig config = new WebCorsConfig();
+        config.setAllowedOriginsConfig("https://appzys-crm-frontend.onrender.com");
+        var corsConfig = config.buildCorsConfiguration();
+
+        assertTrue(corsConfig.getAllowedHeaders().contains("Authorization"),
+                "CORS config must explicitly allow Authorization header");
+        assertTrue(corsConfig.getAllowedHeaders().contains("Content-Type"),
+                "CORS config must explicitly allow Content-Type header");
+    }
+
+    // =========================================================================
+    // TEST 27: Invalid Token Receives 401 WITH Proper CORS Headers
+    // =========================================================================
+    @Test
+    @DisplayName("Test 27: Invalid token receives 401 Unauthorized with proper CORS headers")
+    public void test27_InvalidTokenReceives401WithCorsHeaders() throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/dashboard/overview");
+        request.addHeader("Origin", "https://appzys-crm-frontend.onrender.com");
+        request.addHeader("Authorization", "Bearer invalid-or-stale-token-12345");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        TestFilterChain chain = new TestFilterChain();
+
+        authSecurityFilter.doFilter(request, response, chain);
+
+        assertEquals(401, response.getStatus(), "Invalid token must receive 401 Unauthorized");
+        assertFalse(chain.isExecuted(), "Downstream must not execute for invalid token");
+        assertEquals("https://appzys-crm-frontend.onrender.com", response.getHeader("Access-Control-Allow-Origin"),
+                "401 response MUST contain Access-Control-Allow-Origin so browser Axios interceptor can read 401");
+        assertEquals(1, response.getHeaders("Access-Control-Allow-Origin").size(),
+                "Access-Control-Allow-Origin must be present exactly once (no duplicates)");
+        assertEquals("true", response.getHeader("Access-Control-Allow-Credentials"),
+                "401 response must contain credentials header");
+    }
+
+    // =========================================================================
+    // TEST 28: Valid Active emp2 (Madhan) Token Can Access Dashboard
+    // =========================================================================
+    @Test
+    @DisplayName("Test 28: Valid active emp2 (Madhan) token can access dashboard with 200 OK")
+    public void test28_ValidEmp2TokenAccessesDashboard() throws ServletException, IOException {
+        // Activate Madhan
+        authSessionService.initializeMemberInvitesIfEmpty();
+        String inviteCode = authSessionService.getInitialInviteLinks().get("emp2").rawCode();
+        String pin = authSessionService.getInitialInviteLinks().get("emp2").rawPin();
+
+        MockHttpServletRequest exReq = new MockHttpServletRequest("POST", "/api/auth/exchange");
+        InviteExchangeResponse exResp = authSessionService.exchangeInvite(
+                InviteExchangeRequest.builder().inviteCode(inviteCode).pin(pin).build(), exReq
+        ).response();
+        assertNotNull(exResp.getToken());
+
+        // Access dashboard
+        MockHttpServletRequest dashReq = new MockHttpServletRequest("GET", "/api/dashboard/overview");
+        dashReq.addHeader("Origin", "https://appzys-crm-frontend.onrender.com");
+        dashReq.addHeader("Authorization", "Bearer " + exResp.getToken());
+        MockHttpServletResponse dashResp = new MockHttpServletResponse();
+        TestFilterChain chain = new TestFilterChain();
+
+        authSecurityFilter.doFilter(dashReq, dashResp, chain);
+
+        assertTrue(chain.isExecuted(), "Valid emp2 token must pass security filter to reach dashboard");
+        assertEquals("emp2", dashReq.getAttribute("crm_member_id"));
+        assertEquals("Madhan", dashReq.getAttribute("crm_member_name"));
+    }
+
+    // =========================================================================
+    // TEST 29: Revoked Employee Remains Blocked (401 + CORS headers)
+    // =========================================================================
+    @Test
+    @DisplayName("Test 29: Revoked employee remains blocked with 401 and valid CORS headers")
+    public void test29_RevokedEmployeeRemainsBlockedWithCorsHeaders() throws ServletException, IOException {
+        // Activate Madhan
+        authSessionService.initializeMemberInvitesIfEmpty();
+        String inviteCode = authSessionService.getInitialInviteLinks().get("emp2").rawCode();
+        String pin = authSessionService.getInitialInviteLinks().get("emp2").rawPin();
+
+        MockHttpServletRequest exReq = new MockHttpServletRequest("POST", "/api/auth/exchange");
+        InviteExchangeResponse exResp = authSessionService.exchangeInvite(
+                InviteExchangeRequest.builder().inviteCode(inviteCode).pin(pin).build(), exReq
+        ).response();
+
+        // Admin revokes emp2
+        authSessionService.revokeEmployee("emp2");
+
+        // Try accessing dashboard
+        MockHttpServletRequest dashReq = new MockHttpServletRequest("GET", "/api/dashboard/overview");
+        dashReq.addHeader("Origin", "https://appzys-crm-frontend.onrender.com");
+        dashReq.addHeader("Authorization", "Bearer " + exResp.getToken());
+        MockHttpServletResponse dashResp = new MockHttpServletResponse();
+        TestFilterChain chain = new TestFilterChain();
+
+        authSecurityFilter.doFilter(dashReq, dashResp, chain);
+
+        assertEquals(401, dashResp.getStatus(), "Revoked employee must receive 401 Unauthorized");
+        assertFalse(chain.isExecuted(), "Downstream must not execute for revoked employee");
+        assertEquals("https://appzys-crm-frontend.onrender.com", dashResp.getHeader("Access-Control-Allow-Origin"),
+                "Revocation 401 response must still have CORS headers for frontend handling");
+    }
+
+    // =========================================================================
+    // TEST 30: AI Credentials Cannot Access Employee or Admin Endpoints
+    // =========================================================================
+    @Test
+    @DisplayName("Test 30: AI credentials cannot access human employee or admin endpoints (401/403)")
+    public void test30_AiCredentialsCannotAccessEmployeeOrAdminEndpoints() throws ServletException, IOException {
+        // AI credentials accessing /api/dashboard/overview -> 403 Forbidden
+        MockHttpServletRequest humanReq = new MockHttpServletRequest("GET", "/api/dashboard/overview");
+        humanReq.addHeader("Origin", "https://appzys-crm-frontend.onrender.com");
+        humanReq.addHeader("Authorization", "Bearer " + aiAntigravityKey);
+        MockHttpServletResponse humanResp = new MockHttpServletResponse();
+        TestFilterChain humanChain = new TestFilterChain();
+
+        authSecurityFilter.doFilter(humanReq, humanResp, humanChain);
+
+        assertEquals(403, humanResp.getStatus(), "AI credentials must receive 403 Forbidden on human dashboard");
+        assertFalse(humanChain.isExecuted());
+        assertEquals("https://appzys-crm-frontend.onrender.com", humanResp.getHeader("Access-Control-Allow-Origin"),
+                "403 Forbidden must have CORS headers for browser");
+
+        // AI credentials accessing /api/admin/employees -> 401 Unauthorized
+        MockHttpServletRequest adminReq = new MockHttpServletRequest("GET", "/api/admin/employees");
+        adminReq.addHeader("Origin", "https://appzys-crm-frontend.onrender.com");
+        adminReq.addHeader("Authorization", "Bearer " + aiAntigravityKey);
+        MockHttpServletResponse adminResp = new MockHttpServletResponse();
+        TestFilterChain adminChain = new TestFilterChain();
+
+        authSecurityFilter.doFilter(adminReq, adminResp, adminChain);
+
+        assertEquals(401, adminResp.getStatus(), "AI credentials must receive 401 Unauthorized on admin routes");
+        assertFalse(adminChain.isExecuted());
+    }
+
+    // =========================================================================
+    // TEST 31: Zero Duplicate Access-Control-Allow-Origin Header
+    // =========================================================================
+    @Test
+    @DisplayName("Test 31: Zero duplicate Access-Control-Allow-Origin header when pre-attached by CorsFilter")
+    public void test31_ZeroDuplicateCorsHeaderWhenPreAttached() throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/dashboard/overview");
+        request.addHeader("Origin", "https://appzys-crm-frontend.onrender.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // Simulate CorsFilter having already run and set the header at HIGHEST_PRECEDENCE
+        response.setHeader("Access-Control-Allow-Origin", "https://appzys-crm-frontend.onrender.com");
+        response.setHeader("Access-Control-Allow-Credentials", "true");
+
+        // AuthSecurityFilter runs next and rejects due to missing token
+        authSecurityFilter.doFilter(request, response, new TestFilterChain());
+
+        assertEquals(401, response.getStatus());
+        assertEquals("https://appzys-crm-frontend.onrender.com", response.getHeader("Access-Control-Allow-Origin"));
+        assertEquals(1, response.getHeaders("Access-Control-Allow-Origin").size(),
+                "Must never add duplicate Access-Control-Allow-Origin headers");
     }
 
     // =========================================================================

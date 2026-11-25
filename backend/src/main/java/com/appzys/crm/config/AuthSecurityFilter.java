@@ -17,11 +17,12 @@ import java.util.Optional;
 
 @Slf4j
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 10)
+@Order(Ordered.HIGHEST_PRECEDENCE + 50)
 @RequiredArgsConstructor
 public class AuthSecurityFilter extends OncePerRequestFilter {
 
     private final AuthSessionService authSessionService;
+    private final WebCorsConfig webCorsConfig;
 
     @Override
     protected void doFilterInternal(
@@ -30,9 +31,10 @@ public class AuthSecurityFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // 1. Allow browser CORS preflight requests through without authentication
+        // 1. Handle browser CORS preflight requests (OPTIONS)
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            filterChain.doFilter(request, response);
+            setCorsHeaders(request, response);
+            response.setStatus(HttpServletResponse.SC_OK);
             return;
         }
 
@@ -52,7 +54,7 @@ public class AuthSecurityFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            rejectUnauthorized(response, "Authentication required. Please provide a valid authorization token.");
+            rejectUnauthorized(request, response, "Authentication required. Please provide a valid authorization token.");
             return;
         }
 
@@ -62,7 +64,7 @@ public class AuthSecurityFilter extends OncePerRequestFilter {
         if (path.startsWith("/api/ai/")) {
             Optional<String> agentOpt = authSessionService.validateAiToken(token);
             if (agentOpt.isEmpty()) {
-                rejectUnauthorized(response, "Invalid or unauthorized AI integration credentials.");
+                rejectUnauthorized(request, response, "Invalid or unauthorized AI integration credentials.");
                 return;
             }
             // Bind validated agent identity to request
@@ -74,7 +76,7 @@ public class AuthSecurityFilter extends OncePerRequestFilter {
         // 5. Admin management endpoints (/api/admin/**)
         if (path.startsWith("/api/admin/")) {
             if (!authSessionService.validateMasterAdminKey(token)) {
-                rejectUnauthorized(response, "Unauthorized admin access.");
+                rejectUnauthorized(request, response, "Unauthorized admin access.");
                 return;
             }
             filterChain.doFilter(request, response);
@@ -84,6 +86,7 @@ public class AuthSecurityFilter extends OncePerRequestFilter {
         // 6. Core Team CRM endpoints (/api/companies, /api/dashboard, /api/reports, etc.)
         // AI credentials CANNOT access human endpoints
         if (authSessionService.validateAiToken(token).isPresent()) {
+            setCorsHeaders(request, response);
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"AI credentials are not permitted to access interactive team CRM endpoints.\"}");
@@ -92,7 +95,7 @@ public class AuthSecurityFilter extends OncePerRequestFilter {
 
         // Validate human member session (Database-backed)
         if (!authSessionService.validateMemberToken(token)) {
-            rejectUnauthorized(response, "Session expired, revoked, or invalid. Please re-authenticate.");
+            rejectUnauthorized(request, response, "Session expired, revoked, or invalid. Please re-authenticate.");
             return;
         }
 
@@ -103,6 +106,25 @@ public class AuthSecurityFilter extends OncePerRequestFilter {
         });
 
         filterChain.doFilter(request, response);
+    }
+
+    private void setCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
+        // Prevent duplicate header if CorsFilter has already attached it
+        if (response.getHeader("Access-Control-Allow-Origin") != null) {
+            return;
+        }
+        String origin = request.getHeader("Origin");
+        if (origin != null && !origin.isBlank() && webCorsConfig != null) {
+            String trimmedOrigin = origin.trim();
+            if (webCorsConfig.getAllowedOrigins().contains(trimmedOrigin)) {
+                response.setHeader("Access-Control-Allow-Origin", trimmedOrigin);
+                response.setHeader("Access-Control-Allow-Credentials", "true");
+                response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+                response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Origin, X-Requested-With");
+                response.setHeader("Access-Control-Max-Age", "3600");
+                response.setHeader("Vary", "Origin");
+            }
+        }
     }
 
     private boolean isPublicEndpoint(String method, String path) {
@@ -117,7 +139,8 @@ public class AuthSecurityFilter extends OncePerRequestFilter {
         return false;
     }
 
-    private void rejectUnauthorized(HttpServletResponse response, String message) throws IOException {
+    private void rejectUnauthorized(HttpServletRequest request, HttpServletResponse response, String message) throws IOException {
+        setCorsHeaders(request, response);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write(String.format(

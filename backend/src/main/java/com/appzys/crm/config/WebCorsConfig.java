@@ -1,10 +1,10 @@
 package com.appzys.crm.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -18,28 +18,31 @@ import java.util.List;
 public class WebCorsConfig implements WebMvcConfigurer {
 
     @Value("${crm.security.allowed-origins:https://appzys-crm-frontend.onrender.com,http://localhost:3000}")
-    private String allowedOriginsConfig;
+    private String allowedOriginsConfig = "https://appzys-crm-frontend.onrender.com,http://localhost:3000";
 
-    private List<String> getAllowedOrigins() {
+    public void setAllowedOriginsConfig(String allowedOriginsConfig) {
+        this.allowedOriginsConfig = allowedOriginsConfig;
+    }
+
+    public List<String> getAllowedOrigins() {
         return Arrays.stream(allowedOriginsConfig.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
     }
 
-    @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public CorsFilter corsFilter() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    public CorsConfiguration buildCorsConfiguration() {
         CorsConfiguration config = new CorsConfiguration();
-        
         List<String> origins = getAllowedOrigins();
         for (String origin : origins) {
             config.addAllowedOrigin(origin);
         }
-        
         config.setAllowCredentials(true);
-        config.addAllowedHeader("*");
+        config.addAllowedHeader("Authorization");
+        config.addAllowedHeader("Content-Type");
+        config.addAllowedHeader("Accept");
+        config.addAllowedHeader("Origin");
+        config.addAllowedHeader("X-Requested-With");
         config.addAllowedMethod("GET");
         config.addAllowedMethod("POST");
         config.addAllowedMethod("PUT");
@@ -47,18 +50,26 @@ public class WebCorsConfig implements WebMvcConfigurer {
         config.addAllowedMethod("DELETE");
         config.addAllowedMethod("OPTIONS");
         config.setMaxAge(3600L);
+        return config;
+    }
 
-        source.registerCorsConfiguration("/api/**", config);
-        return new CorsFilter(source);
+    @Bean
+    public FilterRegistrationBean<CorsFilter> corsFilterRegistrationBean() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", buildCorsConfiguration());
+
+        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE); // Evaluates before any authentication or security filters
+        return bean;
     }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         List<String> origins = getAllowedOrigins();
-        registry.addMapping("/api/**")
+        registry.addMapping("/**")
                 .allowedOrigins(origins.toArray(new String[0]))
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
+                .allowedHeaders("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With")
                 .allowCredentials(true)
                 .maxAge(3600);
     }
